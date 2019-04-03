@@ -2,13 +2,13 @@ current - move project 3 code to project 4 -- done
 
 
 ============================================================
-TOSTART
+### TOSTART
 
 git clone 'https://github.com/Conradyen/OS_project4.git'
 
 git remote add upstream 'https://github.com/Conradyen/OS_project4.git'
 
-pull
+### pull
 
 git checkout master
 
@@ -16,7 +16,7 @@ git pull upstream master && git push origin master
 
 git checkout -b 
 
-push
+### push
 
 git add [file_name]
 
