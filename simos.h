@@ -37,7 +37,7 @@ int diskRWtime;   // simulated time (sleep) for disk IO (a page)
 //=============== memory.c related definitions ====================
 
 // memory data type defintion, could be int or float
-//typedef int mdType; 
+//typedef int mdType;
 //#define mdInFormat "%d"
 //#define mdOutFormat "%d"
 typedef float mdType;
@@ -55,7 +55,7 @@ typedef union     // type definition for memory (its content)
 
 // memory read/write function definitions
 
-int get_data (int offset); 
+int get_data (int offset);
 int put_data (int offset);
 int get_instruction (int offset);
   // only cpu.c for the above 3 functions
@@ -68,7 +68,7 @@ void dump_memory ();
 // memory management functions
 
 int allocate_memory (int pid, int msize, int numinstr);
-int free_memory (int pid);  // only called by process.c 
+int free_memory (int pid);  // only called by process.c
 
 void memory_agescan ();  // called by cpu.c after age scan interrupt
 
@@ -114,7 +114,7 @@ struct
 void initialize_cpu ();  // called by system.c
 void cpu_execution ();   // called by process.c
 
-void set_interrupt (unsigned bit);  
+void set_interrupt (unsigned bit);
      // called by clock.c for tqInterrup, memory.c  for ageInterrupt
      // called by clock.c for endWaitInterrupt (sleep)
      // called by term.c for endWaitInterrupt (termio)
@@ -135,7 +135,7 @@ typedef struct
 typePCB **PCB;
   // the system can have at most maxPCB processes,
   // maxProcess further confines it
-  // first process is OS, pid=0, second process is idle, pid = 1, 
+  // first process is OS, pid=0, second process is idle, pid = 1,
   // so, pid of any user process starts from 2
   // each process get a PCB, allocate PCB space upon process creation
 
@@ -146,10 +146,10 @@ typePCB **PCB;
 
 // define process manipulation functions
 
-void dump_PCB (int pid); 
+void dump_PCB (int pid);
 void dump_ready_queue ();
 
-void insert_endWait_process (int pid); 
+void insert_endWait_process (int pid);
      // called by clock.c (sleep), term.c (output), memory.c (page fault)
      // need semaphore protection for the endWait queue access
 void endWait_moveto_ready ();
@@ -182,11 +182,11 @@ void end_swap_manager ();
 #define actNull 0
 
 // define the clock function
-void advance_clock ();  
+void advance_clock ();
      // called by cpu.c to advance instruction cycle based clock
 
-// define the timer functions 
-void dump_events ();  
+// define the timer functions
+void dump_events ();
 void initialize_timer ();  // called by system.c
 genericPtr add_timer (int time, int pid, int action, int recurperiod);
            // called by process.c for time quantum,
@@ -204,7 +204,7 @@ void deactivate_timer (genericPtr castedevent);
 void insert_termio (int pid, char *outstr, int status);
      // called by cpu.c for print instruction, process.c for end process print
      // need semaphore protection for the endWait queue access
-void dump_termio_queue ();  
+void dump_termio_queue ();
 void start_terminal ();  // called by system.c
 void end_terminal ();  // called by system.c
 
@@ -223,3 +223,7 @@ int loader (int pid, char *fname);
 #define progNormal 1
 
 
+//================ helper functions ======================
+
+//paging.c
+int log(int num);

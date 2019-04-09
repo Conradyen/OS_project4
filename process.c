@@ -21,9 +21,6 @@ void context_in (int pid)
   CPU.Pid = pid;
   CPU.PC = PCB[pid]->PC;
   CPU.AC = PCB[pid]->AC;
-  CPU.Mbase = PCB[pid]->Mbase;
-  CPU.MDbase = PCB[pid]->MDbase;
-  CPU.Mbound = PCB[pid]->Mbound;
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
 
@@ -36,9 +33,6 @@ void context_out (int pid)
   // *** ADD CODE to save the context of the process to PCB
   PCB[pid]->PC = CPU.PC;
   PCB[pid]->AC = CPU.AC;
-  PCB[pid]->Mbase = CPU.Mbase ;
-  PCB[pid]->MDbase = CPU.MDbase;
-  PCB[pid]->Mbound = CPU.Mbound;
   PCB[pid]->exeStatus = CPU.exeStatus;
 }
 
