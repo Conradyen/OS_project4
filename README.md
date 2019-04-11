@@ -1,3 +1,19 @@
+### TODO
+
+cpu.c - handel page fault 
+
+ - interrupt handeler
+
+paging.c
+
+ - pagefault handeler
+
+loader.c
+
+ - load program to swap space
+
+
+
 current - move project 3 code to project 4 -- done 
 
 
