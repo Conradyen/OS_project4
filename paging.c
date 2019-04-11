@@ -35,6 +35,7 @@ FrameStruct *memFrame;   // memFrame[numPages]
  * use a queue to control free list
  * Ming-Hsuan
  */
+/*
 typedef struct{
   int free_frame;
   struct freeListNode next*;
@@ -42,10 +43,10 @@ typedef struct{
 
 void free_list_inti();
 void insert_FLtail(int idx);
-
+*/
 //used to be int change to linked list node freeListNode
-freeListNode freeFhead* = NULL;
-freeListNode freeFtail* = NULL;   // the head and tail of free frame list
+void freeList_init();
+int freeFhead,freeFtail; // the head and tail of free frame list
 
 //==========================================================
 
@@ -113,6 +114,28 @@ void print_one_frameinfo (int indx);
 
 // address calcuation are performed for the program in execution
 // so, we can get address related infor from CPU registers
+//=============== functions for address ======================
+
+/**
+ * Ming-Hsuan
+ * @param  addr [description]
+ * @return      [description]
+ */
+
+
+int get_pagenum(int addr);//return page number
+int get_offset(int addr);//return off set
+
+int get_pagenum(int addr){
+  return (addr >> pagenumShift);
+}
+
+int get_offset(int addr){
+  return (addr & pageoffsetMask);
+}
+
+//========================================================
+
 int calculate_memory_address (unsigned offset, int rwflag)
 {
   /**
@@ -124,15 +147,15 @@ int calculate_memory_address (unsigned offset, int rwflag)
   // if there is a page fault, need to set the page fault interrupt
   // also need to set the age and dirty fields accordingly
   // returns memory address or mPFault or mError
-  int pageoffset = offset & pageoffsetMask;
+  int pagenum = get_pagenum(offset);
   int framenum;
-  if(CPU->PTptr[pagenum] != NULL){
-    framenum = CPU->PTptr[pageoffset];
-    return pagenum + (framenum << pagenumShift);
+  if(pagenum < maxPpages){
+    framenum = CPU.PTptr[pagenum];
+    return ((pagenum << pagenumShift) | get_offset(offset));
   }
   // TODO mError
-  else if(pagenum > maxPpages){
-    printf("segmentation fault");
+  else if(pagenum >= maxPpages){
+    printf(">>>>>>>>>>>>>>> segmentation fault  <<<<<<<<<<<<<<<<<<<");
     return mError;
   }
   else{//page fault
@@ -161,7 +184,7 @@ int get_data (int offset)
     return mError;
   }
   else{
-    CPU.MBR = Memory[maddr]->mData;
+    CPU.MBR = Memory[maddr].mData;
     return mNormal;
   }
 }
@@ -185,7 +208,7 @@ int put_data (int offset)
     return mError;
   }
   else{
-    Memory[maddr]->mData = CPU.AC;
+    Memory[maddr].mData = CPU.AC;
     return mNormal;
   }
 }
@@ -211,7 +234,7 @@ int get_instruction (int offset)
     return mError;
   }
   else{
-    instr = Memory[maddr]->mInstr;
+    instr = Memory[maddr].mInstr;
     CPU.IRopcode = instr >> opcodeShift;
     CPU.IRoperand = instr & operandMask;
     return mNormal;
@@ -235,20 +258,23 @@ void direct_put_data (int findex, int offset, mdType data)
 //==========================================
 
 void dump_one_frame (int findex)
-{
+{ int i;
   // dump the content of the memory (of frame findex)
-  printf("Memory frame index %d Data %.2f instruction %d ",findex,Memory[findex]->mData,Memory[findex]->mInstr);
+  for(i = 0;i<pageSize;i++){
+    int addr = findex*pageSize + i;
+    printf("Memory frame index %d Data %.2f instruction %d ",findex,Memory[addr].mData,Memory[addr].mInstr);
+  }
 }
 
 void dump_memory ()
-{
+{ int i;
   /**
    * ????????????????????????????
    * Ming-Hsuan
    */
   // dump all frames of the entire memory
   printf("*************** dump memory comtent ***************");
-  for(int i = 0;i < pageSize*numPages;i++){
+  for(i = 0;i < pageSize*numPages;i++){
     dump_one_frame(i);
   }
 }
@@ -263,11 +289,11 @@ void dump_free_list ()
    */
   // dump the list of free memory frames
   printf("*************** dump free list ***************");
-  freeListNode *temp;
+  int temp;
   temp = freeFhead;
-  while(temp != NULL){
-    printf("free frame : %d \n",temp->free_frame);
-    temp = temp->next;
+  while(temp != nullIndex){
+    printf("free frame : %d \n",temp);
+    temp = memFrame[temp].next;
   }
   printf("\n");
 }
@@ -295,6 +321,13 @@ void dump_memoryframe_info ()
 void  update_newframe_info (findex, pid, page)
 int findex, pid, page;
 {
+  /**
+   * ZXM
+   * @param findex [description]
+   * @param status [description]
+   */
+  memFrame[findex].page = page;
+  memFrame[findex].pid = pid;
 }
 
 // add a frame at the tail of the free list
@@ -307,7 +340,9 @@ void addto_free_frame (int findex, int status)
 
 
 
-  insert_Flist(findex);
+
+}
+int get_agest_frame(){
 
 }
 
@@ -315,24 +350,28 @@ void addto_free_frame (int findex, int status)
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list
 int get_free_frame ()
-{
+{ int i;
   /**
    * Ming-Hsuan
    * @param freeFtail [description]
    */
-  if(freeFtail == NULL){
+  if(freeFtail == freeFhead ){
     //get lowest age frame
     //get_lowest_age()?????????
+    for(i = freeFhead; i < freeFtail;i++){
+      //loop through memFrame check age of each frame get
+      //lowest age frame index
+    }
   }else{
-    int idx = freeFhead->free_frame;
-    freeFhead = freeFhead->next;
+    int idx = freeFhead;
+    freeFhead = memFrame[freeFhead].next;
     return idx;
   }
 
 }
 
 //helper function
-int log(int num){
+int _log(int num){
   /**
    * Ming-Hsuan
    * @param num [description]
@@ -341,39 +380,60 @@ int log(int num){
   if(num == 1){
     return 1;
   }else{
-    return 1+log(num/2);
+    return 1+_log(num/2);
   }
 }
 
 //=================== free list related function ======================
 
-void free_list_init(){
-  /**
-   * initialize free list for simOS
-   * start for OSpages to numPages
-   * Ming-Hsuan
-   */
-  for(int i = OSpages;i<numPages;i++){
-    insert_Flist(i);
-  }
-}
-
-void insert_Flist(int idx){
-  /**
-   * insert frame to free list after pages is free
-   * Ming-Hsuan
-   */
-    freeListNode newNode = (freeListNode *) malloc(sizeof(freeListNode));
-    newNode.freeframe = idx;
-    newNode.next = NULL;
-    if (freeFtail == NULL) // head would be NULL also
-      { freeFtail = newNode; freeFhead = newNode; }
-    else // insert to tail
-      { freeFtail->next = newNode; freeFtail = newNode; }
-
-}
+// void free_list_init(){
+//   /**
+//    * initialize free list for simOS
+//    * start for OSpages to numPages
+//    * Ming-Hsuan
+//    */
+//   for(int i = OSpages;i<numPages;i++){
+//     insert_Flist(i);
+//   }
+// }
+//
+// void insert_Flist(int idx){
+//   /**
+//    * insert frame to free list after pages is free
+//    * Ming-Hsuan
+//    */
+//     freeListNode newNode = (freeListNode *) malloc(sizeof(freeListNode));
+//     newNode.freeframe = idx;
+//     newNode.next = NULL;
+//     if (freeFtail == NULL) // head would be NULL also
+//       { freeFtail = newNode; freeFhead = newNode; }
+//     else // insert to tail
+//       { freeFtail->next = newNode; freeFtail = newNode; }
+//
+// }
 
 //=============================================================
+void freeList_init(){
+  int i;
+  /**
+   * assume memFrame has been initialized
+   * Ming-Hsuan
+   * @param i [description]
+   */
+  for(i = OSpages;i < numPages;i++){
+    memFrame[i].age = zeroAge;
+    memFrame[i].dirty = cleanFrame;
+    memFrame[i].free = freeFrame;
+    memFrame[i].pinned = nopinFrame;
+    memFrame[i].pid = nullPid;
+    if((i+1) < numPages){
+      memFrame[i].next = i+1;
+    }else{
+      memFrame[i].next = nullIndex;
+    }
+    memFrame[i].prev = i-1;
+  }
+}
 
 void initialize_memory ()
 { int i;
@@ -382,22 +442,26 @@ void initialize_memory ()
    */
 
   // create memory + create page frame array memFrame
+  //Memory -> VM
   Memory = (mType *) malloc (numPages*pageSize*sizeof(mType));
+  //Frame -> PM
   memFrame = (FrameStruct *) malloc (numPages*sizeof(FrameStruct));
 
   // compute #bits for page offset, set pagenumShift and pageoffsetMask
   // *** ADD CODE
   //page offset = log2(page size )
   //pageoffset -> pagesize
-  pagenumShift = log(pageSize);
+  pagenumShift = _log(pageSize);
 
   //pageoffsetMask shift pagenumShift
   //operandMask 0x00ffffff
+  //shift operandMask by number of bits of page number
   pageoffsetMask = operandMask >> pagenumShift;
 
   // initialize OS pages
   for (i=0; i<OSpages; i++)
-  { memFrame[i].age = zeroAge;
+  { //OS pages are not in free list
+    memFrame[i].age = zeroAge;
     memFrame[i].dirty = cleanFrame;
     memFrame[i].free = usedFrame;
     memFrame[i].pinned = pinnedFrame;
@@ -405,14 +469,11 @@ void initialize_memory ()
   }
   // initilize the remaining pages, also put them in free list
   // *** ADD CODE
-  for(i = OSpages;i < numPages;i++){
-    memFrame[i].age = zeroAge;
-    memFrame[i].dirty = cleanFrame;
-    memFrame[i].free = freeFrame;
-    memFrame[i].pinned = nopinFrame;
-    memFrame[i].pid = nullPid;
-  }
-  free_list_init()//put in free list
+
+  freeList_init();//put in free list
+  //set head and tail of memFrame linked list
+  freeFhead = OSpages;
+  freeFtail = numPages - 1;
 }
 
 //==========================================
@@ -429,7 +490,6 @@ void init_process_pagetable (int pid)
   int i;
 
   PCB[pid]->PTptr = (int *) malloc (maxPpages);
-
   // initialize the page table for the process
   // *** ADD CODE
   //initialize all pages to null
@@ -443,19 +503,27 @@ void init_process_pagetable (int pid)
 void update_process_pagetable (pid, page, frame)
 int pid, page, frame;
 {
+  /**
+   * ZXM
+   * @param  pid [description]
+   * @return     [description]
+   */
   // update the page table entry for process pid to point to the frame
   // or point to disk or null
-
+  //add nullPage
+  //add disk page
+  PCB[pid]->PTptr[page] = frame;
 }
 
 int free_process_memory (int pid)
 {
   // free the memory frames for a terminated process
   // some frames may have already been freed, but still in process pagetable
+  return mNormal;
 }
 
 void dump_process_pagetable (int pid)
-{
+{ int i;
   /**
    * Ming-Hsuan
    * @param Pid [description]
@@ -493,18 +561,42 @@ void dump_process_memory (int pid)
 #define actRead 0
 #define actWrite 1
 
-void page_fault_handler ()
+//
+// void select_aged_page(){
+//
+// }
+
+int page_fault_handler ()
 {
+  /**
+   * Ming-Hsuan
+   */
+  int swappid, swappage, dirty;
+  int *inbuf, *outbuf;
   // handle page fault
   // obtain a free frame or get a frame with the lowest age
   // if the frame is dirty, insert a write request to swapQ
   // insert a read request to swapQ to bring the new page to this frame
   // update the frame metadata, the page tables of the processes
+  swappid = -1;
+  //get free frame always returns a frame
+  swappage = get_free_frame();
+
+  if (&swappid < 0) return (mError);
+
+  // update page table
+  //=============================================
+  //TO BE changed
+  //inbuf = get_memoryPtr (pid, page);
+  //outbuf = get_memoryPtr (swappid, swappage);
+  // if (!dirty)  // no need to write back
+  //   { swappid = -1; swappage = -1; }
+  // insert_swapQ (pid, page, inbuf, swappid, swappage, outbuf);
 }
 
 // scan the memory and update the age field of each frame
 void memory_agescan ()
-{
+{ int i;
   /**
    * Ming-Hsuan
    * @param i [description]

@@ -116,7 +116,7 @@ int dump_process_swap_page (int pid, int page)
 }
 
 void dump_process_swap (int pid)
-{
+{ int j;
   printf ("****** Dump swap pages for process %d\n", pid);
   for (j=0; j<maxPpages; j++) dump_process_swap_page (pid, j);
 }
@@ -188,11 +188,11 @@ void dump_swapQ ()
    * @param [name] [description]
    */
   // dump all the nodes in the swapQ
-  SwapQnode node = swapQhead;
+  SwapQnode *node = swapQhead;
   printf ("******************** Swap Queue Dump **************************\n");
   while(node != NULL){
     print_one_swapnode(node);
-    node = node.next;
+    node = node->next;
   }
 }
 
@@ -207,11 +207,11 @@ unsigned *buf;
    * Ming-Hsuan
    * @param SwapQnode [description]
    */
-  SwapQnode node = (SwapQnode *) malloc(sizeof(SwapQnode));
-  node.pid = pid;
-  node.page = page;
-  node.act = act;
-  node.pready = pready;
+  SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
+  node->pid = pid;
+  node->page = page;
+  node->act = act;
+  node->pready = pready;
   //buffer
 
   if(swapQtail != NULL){
@@ -223,25 +223,89 @@ unsigned *buf;
 }
 
 void process_one_swap ()
-{
+{ SwapQnode *node;
+  /**
+   * Ming-Hsuan
+   * @param act [description]
+   */
   // get one request from the head of the swap queue and process it
   // it may be read or write action
   // if pready is sendtoReady, then put the process back to ready queue
+  if(Debug){
+    dump_swapQ ();
+  }
+  if(swapQhead == NULL){
+    printf("No process in swqp queue !!! \n");
+  }
+  else{
+  node = swapQhead;
+  // typedef struct SwapQnodeStruct
+  // { int pid, page, act, pready;
+  //   unsigned *buf;
+  //   struct SwapQnodeStruct *next;
+  // } SwapQnode;
+    if(node->act = actRead){
+      read_swap_page (node->pid, node->page, node->buf);
+    }else if(node->act = actWrite){
+      //if avtWrite write to swap.disk
+      write_swap_page (node->pid, node->page, node->buf);
+    }
+    if(node->pready = sendtoReady){
+      insert_ready_process(node->pid);
+    }
+  }
+  if(Debug){
+    printf("Remove swap queue pid : %d, Page: %d",node->pid,node->page);
+  }
+  swapQhead = node->next;
+  if(swapQhead == NULL){
+    swapQtail = NULL;
+  }
+  free(node);
+  if(Debug) {
+    dump_swapQ ();
+  }
+
 }
 
 void *process_swapQ ()
 {
   // called as the entry function for the swap thread
+  while(systemActive){
+    process_one_swap ();
+    if(Debug){
+      printf("swap queue has ended \n");
+    }
+  }
 }
 
+pthread_t swap_thread;
+
 void start_swap_manager ()
-{
+{int ret;
+  /**
+   * Ming-Hsuan
+   * @param swap_semaq [description]
+   */
+
+  sem_init(&swap_semaq,0,1);
+  sem_init(&swapq_mutex,0,1);
+  sem_init(&disk_mutex,0,1);
   // initialize semaphores
-  // initialize_swap_space ();
+  initialize_swap_space ();// initialize_swap_space ();
   // create swap thread
+  ret = pthread_create(&swap_thread,NULL,process_swapQ,NULL);
+  if(ret < 0){
+    printf("swap thread creation problem\n");
+  }else{
+    printf("swap thread has been created successfully\n");
+  }
+
 }
 
 void end_swap_manager ()
-{
+{ int ret;
   // terminate the swap thread
+  ret = pthread_join(swap_thread,NULL);
+  printf("swap thread has terminated %d\n", ret);
 }

@@ -59,7 +59,20 @@ void handle_interrupt ()
       clear_interrupt (tqInterrupt);
     }
     // *** ADD CODE to handle page fault and periodical age scan
-
+    //=============================================================
+    /**
+     * Ming-Hsuan
+     * @param pFaultException [description]
+     */
+    if((CPU.interruptV & pFaultException) == pFaultException){
+      //page fault handling
+      page_fault_handler();
+    }
+    if (Debug){
+    printf ("Interrup handler: pid = %d; interrupt = %x; exeStatus = %d\n",
+            CPU.Pid, CPU.interruptV, CPU.exeStatus);
+    }
+    //=============================================================
   }
 }
 
@@ -91,7 +104,11 @@ void fetch_instruction ()
 
 void execute_instruction ()
 { int gotoaddr, mret;
-
+  /**
+   * code from project 3
+   * Ming-Hsuan
+   */
+  char outstr[50];
   switch (CPU.IRopcode)
   { case OPload:
       // *** ADD CODE for the instruction
@@ -121,7 +138,7 @@ void execute_instruction ()
     case OPprint:
       // *** ADD CODE for the instruction
       sprintf(outstr, "Pid = %d , M[%d] = %.2f",CPU.Pid,CPU.IRoperand ,CPU.MBR);
-      insert_termio(CPU.Pid, outstr,PCB[CPU.Pid]->sockfd,regularIO);
+      insert_termio(CPU.Pid, outstr,regularIO);
       CPU.exeStatus = eWait;
       break;
     case OPsleep:

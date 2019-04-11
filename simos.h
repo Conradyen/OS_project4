@@ -71,8 +71,11 @@ int allocate_memory (int pid, int msize, int numinstr);
 int free_memory (int pid);  // only called by process.c
 
 void memory_agescan ();  // called by cpu.c after age scan interrupt
-
-
+/**
+ * Ming-Hsuan
+ */
+int page_fault_handler();//called by cpu.c for page fault handling
+int get_agest_frame();//return agest frame 
 //================= cpu.c related definitions ======================
 
 // Pid, Registers and interrupt vector in physical CPU
@@ -226,4 +229,4 @@ int loader (int pid, char *fname);
 //================ helper functions ======================
 
 //paging.c
-int log(int num);
+int _log(int num);

@@ -21,6 +21,7 @@ void context_in (int pid)
   CPU.Pid = pid;
   CPU.PC = PCB[pid]->PC;
   CPU.AC = PCB[pid]->AC;
+  //page table 
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
 

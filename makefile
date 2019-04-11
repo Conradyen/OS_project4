@@ -1,9 +1,9 @@
-final: simos.exe
+all: simos.exe
 
 simos.exe: system.o admin.o submit.o process.o cpu.o\
            loader.o paging.o swap.o term.o clock.o
 	gcc -g -o simos.exe system.o admin.o submit.o process.o cpu.o\
-               paging.o loader.o swap.o term.o clock.o -lpthread
+               paging.o loader.o swap.o term.o clock.o -lpthread -std=c99
 
 system.o: system.c simos.h
 	gcc -g -c system.c
@@ -12,7 +12,7 @@ system.o: system.c simos.h
 admin.o: admin.c simos.h
 	gcc -g -c admin.c
 # Read admin commands and process them, drive the whole system
- 
+
 submit.o: submit.c simos.h
 	gcc -g -c submit.c
 # Interface with the client to accept client submissions.
@@ -53,6 +53,5 @@ clock.o: clock.c simos.h
 # The remaining functions are for timers. Users can set different timers
 # and when time is up there will  timer interrupt.
 
-clean: 
+clean:
 	rm *.o simos.exe swap.disk terminal.out
-
