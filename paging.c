@@ -328,6 +328,9 @@ int findex, pid, page;
    */
   memFrame[findex].page = page;
   memFrame[findex].pid = pid;
+ 	memFrame[findex].free = usedFrame;
+	memFrame[findex].next = nullIndex;
+	memFrame[findex].prev = nullIndex;
 }
 
 // add a frame at the tail of the free list
@@ -343,7 +346,16 @@ void addto_free_frame (int findex, int status)
 
 }
 int get_agest_frame(){
-
+//zxm begin----------------
+	int tmp = zeroAge;
+	int agest_frame = numFrames-1;
+	for (i=OSpages; i<numFrames-1; i++)
+  { if(memFrame[i].age > tmp){
+			tmp = memFrame[i].age;
+			agest_frame = i;
+		} 
+  }
+//zxm end----------------
 }
 
 // get a free frame from the head of the free list
@@ -367,7 +379,15 @@ int get_free_frame ()
     freeFhead = memFrame[freeFhead].next;
     return idx;
   }
-
+//zxm begin----------------
+ 	if (freeFhead != nullIndex){
+		int head = freeFhead;
+		freeFhead = memFrame[freeFhead].next;
+		return head;
+	} else {
+		return get_agest_frame();
+	}
+//zxm end----------------
 }
 
 //helper function
@@ -457,7 +477,9 @@ void initialize_memory ()
   //operandMask 0x00ffffff
   //shift operandMask by number of bits of page number
   pageoffsetMask = operandMask >> pagenumShift;
-
+//zxm begin----------------
+pageoffsetMask = 0xffffffff >> (32-pagenumShift);
+//zxm end----------------
   // initialize OS pages
   for (i=0; i<OSpages; i++)
   { //OS pages are not in free list
