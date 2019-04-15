@@ -16,18 +16,21 @@ FILE *progFd;
 
 // may return progNormal or progError (if the program is incorrect)
 int load_instruction (mType *buf, int page, int offset)
-{ 
+{
   // load instruction to buffer
 }
 
 int load_data (mType *buf, int page, int offset)
-{ 
+{
   // load data to buffer (same as load instruction, but use the mData field
 }
 
 // load program to swap space, returns the #pages loaded
 int load_process_to_swap (int pid, char *fname)
-{ 
+{
+  mType *buf;
+  open(fname);
+  
   // read from program file "fname" and call load_instruction & load_data
   // to load the program into the buffer, write the program into
   // swap space by calling write_swap_page (pid, page, buf)
@@ -62,7 +65,7 @@ void load_idle_process ()
   page = 0;   frame = OSpages - 1;
   update_process_pagetable (idlePid, page, frame);
   update_newframe_info (frame, idlePid, page);
-  
+
   // load 1 ifgo instructions (2 words) and 1 data for the idle process
   opcode = OPifgo;   operand = 0;
   instr = (opcode << opcodeShift) | operand;
@@ -70,4 +73,3 @@ void load_idle_process ()
   direct_put_instruction (frame, 1, instr);
   direct_put_data (frame, 2, 1);
 }
-

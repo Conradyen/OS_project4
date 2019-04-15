@@ -343,27 +343,38 @@ void addto_free_frame (int findex, int status)
 
 }
 int get_agest_frame(){
-
+  /**
+   * find the agest page in memory
+   * Ming-Hsuan
+   */
+  int i;
+  int max_age = zeroAge;
+  int frame_num;
+  //loop through physical memory to find max aged frame to swap
+  for(i = OSpages;i < numPages;i++){
+    if(memFrame[i].age > max_age){
+      max_age = memFrame[i].age;
+      frame_num = i;
+    }
+  }
+  return i;
 }
 
 // get a free frame from the head of the free list
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list
 int get_free_frame ()
-{ int i;
+{
+  int idx;
   /**
    * Ming-Hsuan
    * @param freeFtail [description]
    */
   if(freeFtail == freeFhead ){
     //get lowest age frame
-    //get_lowest_age()?????????
-    for(i = freeFhead; i < freeFtail;i++){
-      //loop through memFrame check age of each frame get
-      //lowest age frame index
-    }
+    idx = get_agest_frame();
   }else{
-    int idx = freeFhead;
+    idx = freeFhead;
     freeFhead = memFrame[freeFhead].next;
     return idx;
   }

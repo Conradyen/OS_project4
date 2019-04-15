@@ -75,7 +75,7 @@ void memory_agescan ();  // called by cpu.c after age scan interrupt
  * Ming-Hsuan
  */
 int page_fault_handler();//called by cpu.c for page fault handling
-int get_agest_frame();//return agest frame 
+int get_agest_frame();//return agest frame
 //================= cpu.c related definitions ======================
 
 // Pid, Registers and interrupt vector in physical CPU
@@ -230,3 +230,8 @@ int loader (int pid, char *fname);
 
 //paging.c
 int _log(int num);
+
+//================ debuging =============================
+void process_one_swap ();
+void initialize_swap_space ();
+int write_swap_page (int pid, int page, unsigned *buf);
