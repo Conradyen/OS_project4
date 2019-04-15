@@ -328,6 +328,9 @@ int findex, pid, page;
    */
   memFrame[findex].page = page;
   memFrame[findex].pid = pid;
+ 	memFrame[findex].free = usedFrame;
+	memFrame[findex].next = nullIndex;
+	memFrame[findex].prev = nullIndex;
 }
 
 // add a frame at the tail of the free list
@@ -343,42 +346,48 @@ void addto_free_frame (int findex, int status)
 
 }
 int get_agest_frame(){
-  /**
-   * find the agest page in memory
-   * Ming-Hsuan
-   */
-  int i;
-  int max_age = zeroAge;
-  int frame_num;
-  //loop through physical memory to find max aged frame to swap
-  for(i = OSpages;i < numPages;i++){
-    if(memFrame[i].age > max_age){
-      max_age = memFrame[i].age;
-      frame_num = i;
-    }
+//zxm begin----------------
+	int tmp = zeroAge;
+	int agest_frame = numFrames-1;
+	for (i=OSpages; i<numFrames-1; i++)
+  { if(memFrame[i].age > tmp){
+			tmp = memFrame[i].age;
+			agest_frame = i;
+		} 
   }
-  return i;
+//zxm end----------------
 }
 
 // get a free frame from the head of the free list
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list
 int get_free_frame ()
-{
-  int idx;
+{ int i;
   /**
    * Ming-Hsuan
    * @param freeFtail [description]
    */
   if(freeFtail == freeFhead ){
     //get lowest age frame
-    idx = get_agest_frame();
+    //get_lowest_age()?????????
+    for(i = freeFhead; i < freeFtail;i++){
+      //loop through memFrame check age of each frame get
+      //lowest age frame index
+    }
   }else{
-    idx = freeFhead;
+    int idx = freeFhead;
     freeFhead = memFrame[freeFhead].next;
     return idx;
   }
-
+//zxm begin----------------
+ 	if (freeFhead != nullIndex){
+		int head = freeFhead;
+		freeFhead = memFrame[freeFhead].next;
+		return head;
+	} else {
+		return get_agest_frame();
+	}
+//zxm end----------------
 }
 
 //helper function
@@ -468,7 +477,9 @@ void initialize_memory ()
   //operandMask 0x00ffffff
   //shift operandMask by number of bits of page number
   pageoffsetMask = operandMask >> pagenumShift;
-
+//zxm begin----------------
+pageoffsetMask = 0xffffffff >> (32-pagenumShift);
+//zxm end----------------
   // initialize OS pages
   for (i=0; i<OSpages; i++)
   { //OS pages are not in free list
