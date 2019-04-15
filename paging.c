@@ -118,13 +118,10 @@ void print_one_frameinfo (int indx);
 
 /**
  * Ming-Hsuan
- * @param  addr [description]
- * @return      [description]
  */
 
-
-int get_pagenum(int addr);//return page number
-int get_offset(int addr);//return off set
+ int get_pagenum(int addr);//return page number
+ int get_offset(int addr);//return off set
 
 int get_pagenum(int addr){
   return (addr >> pagenumShift);
@@ -329,6 +326,7 @@ int findex, pid, page;
   memFrame[findex].page = page;
   memFrame[findex].pid = pid;
  	memFrame[findex].free = usedFrame;
+  //where is the new frame ??????????????
 	memFrame[findex].next = nullIndex;
 	memFrame[findex].prev = nullIndex;
 }
@@ -340,8 +338,11 @@ int findex, pid, page;
 // so, the process can continue using the page, till actual swap
 void addto_free_frame (int findex, int status)
 {
-
-
+  if(status == dirtyFrame){
+    //write to disk
+  }else if(status == cleanFrame){
+    //do add to free list
+  }
 
 
 }
@@ -353,7 +354,7 @@ int get_agest_frame(){
   { if(memFrame[i].age > tmp){
 			tmp = memFrame[i].age;
 			agest_frame = i;
-		} 
+		}
   }
 //zxm end----------------
 }
@@ -477,9 +478,9 @@ void initialize_memory ()
   //operandMask 0x00ffffff
   //shift operandMask by number of bits of page number
   pageoffsetMask = operandMask >> pagenumShift;
-//zxm begin----------------
-pageoffsetMask = 0xffffffff >> (32-pagenumShift);
-//zxm end----------------
+  //zxm begin----------------
+  pageoffsetMask = 0xffffffff >> (32-pagenumShift);
+  //zxm end----------------
   // initialize OS pages
   for (i=0; i<OSpages; i++)
   { //OS pages are not in free list
@@ -625,6 +626,12 @@ void memory_agescan ()
    */
   for(i = OSpages;i < numPages;i++){
     memFrame[i].age = memFrame[i].age >> 1;
+    if(memFrame[i].age == 0x0000000){
+      /**
+       * add to free list when age is 0x0000000
+       */
+      addto_free_frame(i,memFrame[i].dirty);
+    }
   }
 }
 

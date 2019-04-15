@@ -18,24 +18,65 @@ FILE *progFd;
 int load_instruction (mType *buf, int page, int offset)
 {
   // load instruction to buffer
+  int opcode,operand;
+  int addr = (page * pageSize)+offset;
+  fscanf (progFd, "%d %d\n", &opcode, &operand);
+  opcode = opcode << opcodeShift;
+  operand = operand & operandMask;
+  buf[addr].mInstr = opcode | operand;
+  return (mNormal);
 }
 
 int load_data (mType *buf, int page, int offset)
 {
   // load data to buffer (same as load instruction, but use the mData field
+  int data;
+  int addr = (page * pageSize)+offset;
+  fscanf (progFd, "%d\n", &data);
+  buf[addr].mData = data;
+  return (mNormal);
 }
 
 // load program to swap space, returns the #pages loaded
 int load_process_to_swap (int pid, char *fname)
 {
   mType *buf;
-  open(fname);
-  
+  int msize, numinstr, numdata;
+  progFd = open(fname,"r");
+
+  if (fprog == NULL)
+  { printf ("Incorrect program name: %s!\n", fname);
+    return;
+  }
+  ret = fscanf (fprog, "%d %d %d\n", &msize, &numinstr, &numdata);
+  if (ret < 3)   // did not get all three inputs
+  { printf ("Submission failure: missing %d program parameters!\n", 3-ret);
+    return;
+  }
+
   // read from program file "fname" and call load_instruction & load_data
   // to load the program into the buffer, write the program into
   // swap space by calling write_swap_page (pid, page, buf)
   // update the process page table to indicate that the page is not empty
   // and it is on disk
+  //=====================================================================
+  //TOBE changed
+  for (i=0; i<numinstr; i++)
+  {
+    if (Debug) printf ("Process %d load instruction: %d, %d, %d\n",pid, i, opcode, operand);
+    ret = load_instruction (*buf,page,offset);
+    write_swap_page(pid,page,buf);
+    //if (ret == mError) { PCB[pid]->exeStatus = eError; return; }
+  }
+  for (i=0; i<numdata; i++)
+  { fscanf (fprog, "%f\n", &data);
+    ret = load_data (*buf, i, data);
+    write_swap_page(pid,page,buf);
+    if (Debug) printf ("Process %d load data: %d, %.2f\n", pid, i, data);
+    //if (ret == mError) { PCB[pid]->exeStatus = eError; return; }
+  }
+  //=====================================================================
+
 }
 
 int load_pages_to_memory (int pid, int numpage)

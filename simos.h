@@ -231,6 +231,7 @@ int loader (int pid, char *fname);
 //paging.c
 int _log(int num);
 
+
 //================ debuging =============================
 void process_one_swap ();
 void initialize_swap_space ();
