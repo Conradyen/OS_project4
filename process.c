@@ -22,6 +22,7 @@ void context_in (int pid)
   CPU.PC = PCB[pid]->PC;
   CPU.AC = PCB[pid]->AC;
   //page table 
+	CPU.PTptr = PCB[pid]->PTptr;//ZXM
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
 
@@ -35,6 +36,7 @@ void context_out (int pid)
   PCB[pid]->PC = CPU.PC;
   PCB[pid]->AC = CPU.AC;
   PCB[pid]->exeStatus = CPU.exeStatus;
+	PCB[pid]->PTptr = CPU.PTptr;//ZXM
 }
 
 //=========================================================================
@@ -322,7 +324,11 @@ void execute_process ()
   if (pid != nullReady)
   {
     // *** ADD CODE to perform context switch and call cpu_execution
-
+		printf("starting idle process: %d\n",pid);//zxm
+    context_in (pid);
+    CPU.exeStatus = eRun;
+    add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+    cpu_execution ();//zxm
     if (CPU.exeStatus == eReady) insert_ready_process (pid);
     else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait)
       deactivate_timer (event);

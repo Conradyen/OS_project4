@@ -148,7 +148,9 @@ int calculate_memory_address (unsigned offset, int rwflag)
   int framenum;
   if(pagenum < maxPpages){
     framenum = CPU.PTptr[pagenum];
-    return ((pagenum << pagenumShift) | get_offset(offset));
+		//memFrame[framenum].age >> 1;//zxm
+		if(flagWrite == rwflag)	memFrame[framenum].dirty = dirtyFrame;//zxm
+	  return ((pagenum << pagenumShift) | get_offset(offset));
   }
   // TODO mError
   else if(pagenum >= maxPpages){
@@ -157,6 +159,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
   }
   else{//page fault
     //set page fault interrupt
+		set_interrupt (pFaultException);//zxm
     return mPFault;
   }
 }
@@ -337,26 +340,57 @@ int findex, pid, page;
 // unless frames are from the terminated process (status = nullPage)
 // so, the process can continue using the page, till actual swap
 void addto_free_frame (int findex, int status)
-{
+{ int i ;
+ 	mType *buf;
   if(status == dirtyFrame){
     //write to disk
+		for(i=0;i<pageSize;i++) {
+			buf[i].instr = Mem[findex+i].instr;
+			buf[i].mdata = Mem[findex+i].mdata;
+		}
+    insert_swapQ (pid, page, buf, actWrite, pready)//zxm how do i know which pid it belong?
+		if(freeFhead == nullIndex && freeFtail== nullIndex) { //??????
+			freeFhead = findex; freeFtail = findex;
+		} else {
+			memFrame[freeFtail].next = findex;
+			freeFtail = findex;
+			memFrame[findex].free = freeFrame;
+		}
   }else if(status == cleanFrame){
     //do add to free list
+		if(freeFhead == nullIndex && freeFtail== nullIndex) {
+			freeFhead = findex; freeFtail = findex;
+		} else {
+			memFrame[freeFtail].next = findex;
+			freeFtail = findex;
+			memFrame[findex].free = freeFrame;
+		}
   }
 
 
 }
 int get_agest_frame(){
 //zxm begin----------------
-	int tmp = zeroAge;
+	int tmp_lowest = HighestAge;
+  int i,j,frmcnt;
 	int agest_frame = numFrames-1;
-	for (i=OSpages; i<numFrames-1; i++)
-  { if(memFrame[i].age > tmp){
-			tmp = memFrame[i].age;
-			agest_frame = i;
-		}
-  }
+	//1st round -->> find out lowest age
+	for (i=OSpages; i<numFrames-1; i++) 
+  { if(memFrame[i].age == 0)  {addto_free_frame(i,memFrame[i].dirty); return i}
+ 		if(memFrame[i].age < tmp_lowest){ 
+			tmp_lowest = memFrame[i].age;
+      frmcnt = 1;
+		} else if(memFrame[i].age == tmp_lowest){
+			frmcnt += 1;
+  	}
+	}
+	//2nd round -->> find out lowest age
+  for(j = OSpages; j< numFrames -1; j++）
+	{	if(memFrame[i].age == tmp_lowest) {addto_free_frame(i,memFrame[i].dirty); return i}
+  //if there is only one lowst page which is dirty page, then do the swap out  /?????
+  
 //zxm end----------------
+	}
 }
 
 // get a free frame from the head of the free list
@@ -386,7 +420,7 @@ int get_free_frame ()
 		freeFhead = memFrame[freeFhead].next;
 		return head;
 	} else {
-		return get_agest_frame();
+		return get_agest_frame();//?
 	}
 //zxm end----------------
 }
@@ -542,6 +576,16 @@ int free_process_memory (int pid)
 {
   // free the memory frames for a terminated process
   // some frames may have already been freed, but still in process pagetable
+	int framenum;
+	for(int i =0; i < Maxpages; i++)
+	{
+		framenum = PCB[pid]->PTptr[i];
+		memFrame[framenum].age = zeroAge;
+  	memFrame[framenum].dirty = cleanFrame;
+  	memFrame[framenum].free = freeFrame;
+  	memFrame[framenum].pinned = nopinFrame;
+  	memFrame[framenum].pid = nullPid; 
+	}
   return mNormal;
 }
 

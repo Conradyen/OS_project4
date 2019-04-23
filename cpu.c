@@ -133,7 +133,8 @@ void execute_instruction ()
       break;// else next PC
     case OPstore:
       // *** ADD CODE for the instruction
-      put_data (CPU.IRoperand);
+      int ret_put = put_data (CPU.IRoperand);//zxm
+			if(ret_put == mPFault) CPU.exeStatus = ePFault;//zxm
       break;
     case OPprint:
       // *** ADD CODE for the instruction
@@ -178,6 +179,7 @@ void cpu_execution ()
     }
 
     if (CPU.interruptV != 0) handle_interrupt ();
+		memory_agescan ();//zxm
     advance_clock ();
       // since we don't have clock, we use instruction cycle as the clock
       // no matter whether there is a page fault or an error,

@@ -24,7 +24,8 @@ int load_instruction (mType *buf, int page, int offset)
   opcode = opcode << opcodeShift;
   operand = operand & operandMask;
   buf[addr].mInstr = opcode | operand;
-  return (mNormal);
+  if (Debug) printf ("load instruction: %d, %d\n",opcode, operand);//zxm
+  return (progNormal);//zxm mNormal); how to generate progError
 }
 
 int load_data (mType *buf, int page, int offset)
@@ -34,7 +35,8 @@ int load_data (mType *buf, int page, int offset)
   int addr = (page * pageSize)+offset;
   fscanf (progFd, "%d\n", &data);
   buf[addr].mData = data;
-  return (mNormal);
+  if (Debug) printf ("load data: %.2f\n", data);//zxm
+  return (progNormal);//zxm mNormal); how to generate progError
 }
 
 // load program to swap space, returns the #pages loaded
@@ -42,18 +44,19 @@ int load_process_to_swap (int pid, char *fname)
 {
   mType *buf;
   int msize, numinstr, numdata;
+	int page，offet, numpage;//zxm
   progFd = open(fname,"r");
 
-  if (fprog == NULL)
+  if (progFd == NULL)
   { printf ("Incorrect program name: %s!\n", fname);
     return;
   }
-  ret = fscanf (fprog, "%d %d %d\n", &msize, &numinstr, &numdata);
+  ret = fscanf (progFd, "%d %d %d\n", &msize, &numinstr, &numdata);
   if (ret < 3)   // did not get all three inputs
   { printf ("Submission failure: missing %d program parameters!\n", 3-ret);
     return;
   }
-
+  numpage = numinstr / pageSize + numdata / pageSize;
   // read from program file "fname" and call load_instruction & load_data
   // to load the program into the buffer, write the program into
   // swap space by calling write_swap_page (pid, page, buf)
@@ -62,21 +65,23 @@ int load_process_to_swap (int pid, char *fname)
   //=====================================================================
   //TOBE changed
   for (i=0; i<numinstr; i++)
-  {
-    if (Debug) printf ("Process %d load instruction: %d, %d, %d\n",pid, i, opcode, operand);
+  {	page = i / pageSize;
+    offet = i % pageSize;
+    if (Debug) printf ("Process %d loading %d", pid, i);
     ret = load_instruction (*buf,page,offset);
-    write_swap_page(pid,page,buf);
-    //if (ret == mError) { PCB[pid]->exeStatus = eError; return; }
+    if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
+    if (ret == progError) { PCB[pid]->exeStatus = eError; return;  	 } //???
   }
   for (i=0; i<numdata; i++)
-  { fscanf (fprog, "%f\n", &data);
+  { page = i / pageSize;
+    offet = i % pageSize;
+    if (Debug) printf ("Process %d loading %d", pid, i);
     ret = load_data (*buf, i, data);
-    write_swap_page(pid,page,buf);
-    if (Debug) printf ("Process %d load data: %d, %.2f\n", pid, i, data);
-    //if (ret == mError) { PCB[pid]->exeStatus = eError; return; }
+    if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
+    if (ret == progError) { PCB[pid]->exeStatus = eError; return; } //???
   }
   //=====================================================================
-
+  return numpage
 }
 
 int load_pages_to_memory (int pid, int numpage)
@@ -84,6 +89,18 @@ int load_pages_to_memory (int pid, int numpage)
   // call insert_swapQ to load the pages of process pid to memory
   // #pages to load = min (loadPpages, numpage = #pages loaded to swap for pid)
   // ask swap.c to place the process to ready queue only after the last write
+  mType *buf;//zxm
+  int i;
+	for(i=0;i<numpage;i++) {
+  	insert_swapQ (pid, i, buf, actRead, pready)//code from swap to memory
+ 		framenum = get_free_frame();
+	 	update_process_pagetable (pid, i, framenum) 
+		update_newframe_info (framenum, pid, i)
+  	for ( i=0;i< pageSize; i++){
+			Mem[framenum+i].instr = buf[i].instr;
+			Mem[framenum+i].mdata = buf[i].mdata;
+  	}
+	}
 }
 
 int load_process (int pid, char *fname)
