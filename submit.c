@@ -47,5 +47,3 @@ void end_client_submission ()
   ret = pthread_join (submissionThread, NULL);
   printf ("Client submission interface has finished %d\n", ret);
 }
-
-

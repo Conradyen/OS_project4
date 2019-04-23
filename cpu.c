@@ -133,8 +133,8 @@ void execute_instruction ()
       break;// else next PC
     case OPstore:
       // *** ADD CODE for the instruction
-      int ret_put = put_data (CPU.IRoperand);//zxm
-			if(ret_put == mPFault) CPU.exeStatus = ePFault;//zxm
+      mret = put_data (CPU.IRoperand);//zxm
+			if(mret == mPFault) CPU.exeStatus = ePFault;//zxm
       break;
     case OPprint:
       // *** ADD CODE for the instruction

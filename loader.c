@@ -21,10 +21,10 @@ int load_instruction (mType *buf, int page, int offset)
   int opcode,operand;
   int addr = (page * pageSize)+offset;
   fscanf (progFd, "%d %d\n", &opcode, &operand);
+  if (Debug) printf ("load instruction: %d, %d\n",opcode, operand);//zxm
   opcode = opcode << opcodeShift;
   operand = operand & operandMask;
   buf[addr].mInstr = opcode | operand;
-  if (Debug) printf ("load instruction: %d, %d\n",opcode, operand);//zxm
   return (progNormal);//zxm mNormal); how to generate progError
 }
 
@@ -34,8 +34,8 @@ int load_data (mType *buf, int page, int offset)
   int data;
   int addr = (page * pageSize)+offset;
   fscanf (progFd, "%d\n", &data);
+  if (Debug) printf ("load data: %d\n", data);//zxm
   buf[addr].mData = data;
-  if (Debug) printf ("load data: %.2f\n", data);//zxm
   return (progNormal);//zxm mNormal); how to generate progError
 }
 
@@ -44,14 +44,18 @@ int load_process_to_swap (int pid, char *fname)
 {
   mType *buf;
   int msize, numinstr, numdata;
-	int page，offet, numpage;//zxm
-  progFd = open(fname,"r");
-
+	int page,offset,numpage;//zxm
+  int ret,i;//check return value
+  //NOTE ***************
+  //int ret  = something; are not valid in std=c99
+  progFd = fopen(fname,"r");
+  //printf("file %s open secessfully!!!\n",fname);
   if (progFd == NULL)
   { printf ("Incorrect program name: %s!\n", fname);
     return;
   }
   ret = fscanf (progFd, "%d %d %d\n", &msize, &numinstr, &numdata);
+  //printf("first line\n");
   if (ret < 3)   // did not get all three inputs
   { printf ("Submission failure: missing %d program parameters!\n", 3-ret);
     return;
@@ -66,22 +70,22 @@ int load_process_to_swap (int pid, char *fname)
   //TOBE changed
   for (i=0; i<numinstr; i++)
   {	page = i / pageSize;
-    offet = i % pageSize;
-    if (Debug) printf ("Process %d loading %d", pid, i);
-    ret = load_instruction (*buf,page,offset);
+    offset = i % pageSize;
+    //if (Debug) printf ("Process %d loading Line %d\n", pid, i);
+    ret = load_instruction (buf,page,offset);
     if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
     if (ret == progError) { PCB[pid]->exeStatus = eError; return;  	 } //???
   }
-  for (i=0; i<numdata; i++)
+  for (i = numinstr; i < msize; i++)
   { page = i / pageSize;
-    offet = i % pageSize;
-    if (Debug) printf ("Process %d loading %d", pid, i);
-    ret = load_data (*buf, i, data);
+    offset = i % pageSize;
+    //if (Debug) printf ("Process %d loading Line %d\n", pid, i);
+    ret = load_data (buf, page, offset);
     if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
     if (ret == progError) { PCB[pid]->exeStatus = eError; return; } //???
   }
   //=====================================================================
-  return numpage
+  return numpage;
 }
 
 int load_pages_to_memory (int pid, int numpage)
@@ -91,16 +95,12 @@ int load_pages_to_memory (int pid, int numpage)
   // ask swap.c to place the process to ready queue only after the last write
   mType *buf;//zxm
   int i;
+  pringf("here in load_pages_to_memor\n");
 	for(i=0;i<numpage;i++) {
-  	insert_swapQ (pid, i, buf, actRead, pready)//code from swap to memory
- 		framenum = get_free_frame();
-	 	update_process_pagetable (pid, i, framenum) 
-		update_newframe_info (framenum, pid, i)
-  	for ( i=0;i< pageSize; i++){
-			Mem[framenum+i].instr = buf[i].instr;
-			Mem[framenum+i].mdata = buf[i].mdata;
-  	}
+    read_swap_page(pid,i,buf);
+  	insert_swapQ (pid, i, buf, 0, 1);//code from swap to memory
 	}
+
 }
 
 int load_process (int pid, char *fname)

@@ -345,10 +345,10 @@ void addto_free_frame (int findex, int status)
   if(status == dirtyFrame){
     //write to disk
 		for(i=0;i<pageSize;i++) {
-			buf[i].instr = Mem[findex+i].instr;
-			buf[i].mdata = Mem[findex+i].mdata;
+			buf[i].mInstr = Memory[findex+i].mInstr;
+			buf[i].mData = Memory[findex+i].mData;
 		}
-    insert_swapQ (pid, page, buf, actWrite, pready)//zxm how do i know which pid it belong?
+    //insert_swapQ (pid, page, buf, actWrite, pready)//zxm how do i know which pid it belong?
 		if(freeFhead == nullIndex && freeFtail== nullIndex) { //??????
 			freeFhead = findex; freeFtail = findex;
 		} else {
@@ -371,13 +371,16 @@ void addto_free_frame (int findex, int status)
 }
 int get_agest_frame(){
 //zxm begin----------------
-	int tmp_lowest = HighestAge;
+	int tmp_lowest = highestAge;
   int i,j,frmcnt;
-	int agest_frame = numFrames-1;
+	int agest_frame = numPages;
 	//1st round -->> find out lowest age
-	for (i=OSpages; i<numFrames-1; i++) 
-  { if(memFrame[i].age == 0)  {addto_free_frame(i,memFrame[i].dirty); return i}
- 		if(memFrame[i].age < tmp_lowest){ 
+	for (i=OSpages; i < numPages; i++){
+    if(memFrame[i].age == 0){
+      addto_free_frame(i,memFrame[i].dirty);
+      return i;
+  }
+ 		if(memFrame[i].age < tmp_lowest){
 			tmp_lowest = memFrame[i].age;
       frmcnt = 1;
 		} else if(memFrame[i].age == tmp_lowest){
@@ -385,10 +388,13 @@ int get_agest_frame(){
   	}
 	}
 	//2nd round -->> find out lowest age
-  for(j = OSpages; j< numFrames -1; j++）
-	{	if(memFrame[i].age == tmp_lowest) {addto_free_frame(i,memFrame[i].dirty); return i}
+  for(j = OSpages; j< numPages; j++){
+    if(memFrame[i].age == tmp_lowest) {
+      addto_free_frame(i,memFrame[i].dirty);
+      return i;
+  }
   //if there is only one lowst page which is dirty page, then do the swap out  /?????
-  
+
 //zxm end----------------
 	}
 }
@@ -572,19 +578,19 @@ int pid, page, frame;
   PCB[pid]->PTptr[page] = frame;
 }
 
-int free_process_memory (int pid)
+int free_process_memory(int pid)
 {
   // free the memory frames for a terminated process
   // some frames may have already been freed, but still in process pagetable
-	int framenum;
-	for(int i =0; i < Maxpages; i++)
+	int framenum,i;
+	for(i =0; i < maxPpages; i++)
 	{
 		framenum = PCB[pid]->PTptr[i];
 		memFrame[framenum].age = zeroAge;
   	memFrame[framenum].dirty = cleanFrame;
   	memFrame[framenum].free = freeFrame;
   	memFrame[framenum].pinned = nopinFrame;
-  	memFrame[framenum].pid = nullPid; 
+  	memFrame[framenum].pid = nullPid;
 	}
   return mNormal;
 }

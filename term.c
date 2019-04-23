@@ -15,14 +15,14 @@
 
 // terminal output file name and file descriptor
 // write terminal output to a file, to avoid messy printout
-#define termFN "terminal.out"   
+#define termFN "terminal.out"
 FILE *fterm;
 
 void terminal_output (int pid, char *outstr);
 
 
 //=========================================================================
-// terminal output queue 
+// terminal output queue
 // implemented as a list with head and tail pointers
 //=========================================================================
 
@@ -48,6 +48,7 @@ sem_t term_mutex;
 void dump_termio_queue ()
 { TermQnode *node;
 
+  sem_wait(&term_mutex);
   printf ("******************** Term Queue Dump\n");
   node = termQhead;
   while (node != NULL)
@@ -55,6 +56,7 @@ void dump_termio_queue ()
     node = node->next;
   }
   printf ("\n");
+  sem_post(&term_mutex);
 }
 
 // insert terminal queue is not inside the terminal thread, but called by
@@ -65,15 +67,18 @@ char *outstr;
 { TermQnode *node;
 
   if (Debug) printf ("Insert term queue %d %s\n", pid, outstr);
+  sem_post(&term_semaq);
   node = (TermQnode *) malloc (sizeof (TermQnode));
   node->pid = pid;
   node->str = outstr;
   node->type = type;
   node->next = NULL;
+  sem_wait(&term_mutex);
   if (termQtail == NULL) // termQhead would be NULL also
   { termQtail = node; termQhead = node; }
   else // insert to tail
   { termQtail->next = node; termQtail = node; }
+  sem_post(&term_mutex);
   if (Debug) dump_termio_queue ();
 }
 
@@ -83,10 +88,15 @@ void handle_one_termio ()
 { TermQnode *node;
 
   if (Debug) dump_termio_queue ();
-  if (termQhead == NULL)
+  if (termQhead == NULL){
+    sem_wait(&term_mutex);
     printf ("No process in terminal queue!!!\n");
-  else 
-  { node = termQhead;
+    sem_post(&term_mutex);
+    sem_wait(&term_semaq);
+  }
+  else{
+    sem_wait(&term_mutex);
+    node = termQhead;
     terminal_output (node->pid, node->str);
     if (node->type != endIO)
     { insert_endWait_process (node->pid);
@@ -96,7 +106,10 @@ void handle_one_termio ()
     if (Debug) printf ("Remove term queue %d %s\n", node->pid, node->str);
     termQhead = node->next;
     if (termQhead == NULL) termQtail = NULL;
-    free (node->str); free (node);
+    //free (node->str);
+    free (node);
+    sem_post(&term_mutex);
+    sem_wait(&term_semaq);
     if (Debug) dump_termio_queue ();
   }
 }
@@ -128,7 +141,8 @@ pthread_t termThread;
 
 void start_terminal ()
 { int ret;
-
+  sem_init(&term_mutex,0,1);
+  sem_init(&term_semaq,0,0);
   fterm = fopen (termFN, "w");
   ret = pthread_create (&termThread, NULL, termIO, NULL);
   if (ret < 0) printf ("TermIO thread creation problem\n");
@@ -137,10 +151,9 @@ void start_terminal ()
 
 void end_terminal ()
 { int ret;
-
   fclose (fterm);
+  sem_destroy(&term_mutex);
+  sem_destroy(&term_semaq);
   ret = pthread_join (termThread, NULL);
   printf ("TermIO thread has terminated %d\n", ret);
 }
-
-

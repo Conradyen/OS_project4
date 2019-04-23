@@ -51,7 +51,10 @@ int read_swap_page (int pid, int page, unsigned *buf)
     location = (pid-2) * PswapSize + page*pagedataSize;
     ret = lseek (diskfd, location, SEEK_SET);
     if (ret < 0) perror ("Error lseek in read: \n");
+    sem_wait(&disk_mutex);
+    printf("READ size buf %d page data size %d\n",sizeof(buf),pagedataSize);
     retsize = read (diskfd, (char *)buf, pagedataSize);
+    sem_post(&disk_mutex);
     if (retsize != pagedataSize)
     { printf ("Error: Disk read returned incorrect size: %d\n", retsize);
       exit(-1);
@@ -77,9 +80,12 @@ int write_swap_page (int pid, int page, unsigned *buf)
     location = (pid-2) * PswapSize + page*pagedataSize;
     ret = lseek (diskfd, location, SEEK_SET);
     if (ret < 0) perror ("Error lseek in write: \n");
+    sem_wait(&disk_mutex);
+    printf("size buf %d page data size %d\n",sizeof(buf),pagedataSize);
     retsize = write (diskfd, (char *)buf, pagedataSize);
+    sem_post(&disk_mutex);
     if (retsize != pagedataSize)
-      { printf ("Error: Disk read returned incorrect size: %d\n", retsize);
+      { printf ("Error: Disk write returned incorrect size: %d\n", retsize);
         exit(-1);
       }
     usleep (diskRWtime);
@@ -171,9 +177,12 @@ typedef struct SwapQnodeStruct
 SwapQnode *swapQhead = NULL;
 SwapQnode *swapQtail = NULL;
 
-#define sendtoReady 1  // flags for pready field, indicate whehter to
-#define notReady 0   // send the process to ready queue at the end
-#define actRead 0   // flags for act (action), read or write
+#define sendtoReady 1
+// flags for pready field, indicate whehter to
+#define notReady 0
+// send the process to ready queue at the end
+#define actRead 0
+// flags for act (action), read or write
 #define actWrite 1
 
 void print_one_swapnode (SwapQnode *node)
@@ -189,11 +198,14 @@ void dump_swapQ ()
    */
   // dump all the nodes in the swapQ
   SwapQnode *node = swapQhead;
+  sem_wait(&swapq_mutex);
   printf ("******************** Swap Queue Dump **************************\n");
   while(node != NULL){
     print_one_swapnode(node);
     node = node->next;
   }
+  printf("\n");
+  sem_wait(&swapq_mutex);
 }
 
 // act can be actRead or actWrite
@@ -202,24 +214,29 @@ void dump_swapQ ()
 void insert_swapQ (pid, page, buf, act, pready)
 int pid, page, act, pready;
 unsigned *buf;
-{
+{SwapQnode *node;
   /**
    * Ming-Hsuan
    * @param SwapQnode [description]
    */
-  SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
+   if(Debug){
+     printf("Insert swap queue %d, %s\n",pid,buf);
+   }
+  sem_post(&swap_semaq);
+  node = (SwapQnode *) malloc(sizeof(SwapQnode));
   node->pid = pid;
   node->page = page;
   node->act = act;
   node->pready = pready;
+  node->buf = buf;
   //buffer
-
+  sem_wait(&swapq_mutex);
   if(swapQtail != NULL){
     swapQtail = node; swapQhead = node;
   }else{
     swapQtail->next = node; swapQtail = node;
   }
-
+  sem_post(&swapq_mutex);
 }
 
 void process_one_swap ()
@@ -235,15 +252,15 @@ void process_one_swap ()
     dump_swapQ ();
   }
   if(swapQhead == NULL){
+    sem_wait(&swapq_mutex);
     printf("No process in swqp queue !!! \n");
+    sem_post(&swapq_mutex);
+    sem_wait(&swap_semaq);
   }
   else{
-  node = swapQhead;
-  // typedef struct SwapQnodeStruct
-  // { int pid, page, act, pready;
-  //   unsigned *buf;
-  //   struct SwapQnodeStruct *next;
-  // } SwapQnode;
+    sem_wait(&swapq_mutex);
+    node = swapQhead;
+    printf(">>>>>>>>>>>>>>> handel one swap <<<<<<<<<<<<<<\n");
     if(node->act = actRead){
       read_swap_page (node->pid, node->page, node->buf);
     }else if(node->act = actWrite){
@@ -253,17 +270,19 @@ void process_one_swap ()
     if(node->pready = sendtoReady){
       insert_ready_process(node->pid);
     }
-  }
-  if(Debug){
-    printf("Remove swap queue pid : %d, Page: %d",node->pid,node->page);
-  }
-  swapQhead = node->next;
-  if(swapQhead == NULL){
-    swapQtail = NULL;
-  }
-  free(node);
-  if(Debug) {
-    dump_swapQ ();
+    if(Debug){
+      printf("Remove swap queue pid : %d, Page: %d",node->pid,node->page);
+    }
+    swapQhead = node->next;
+    if(swapQhead == NULL){
+      swapQtail = NULL;
+    }
+    free(node);
+    sem_post(&swapq_mutex);
+    sem_wait(&swap_semaq);
+    if(Debug) {
+      dump_swapQ ();
+    }
   }
 
 }
@@ -288,7 +307,7 @@ void start_swap_manager ()
    * @param swap_semaq [description]
    */
 
-  sem_init(&swap_semaq,0,1);
+  sem_init(&swap_semaq,0,0);
   sem_init(&swapq_mutex,0,1);
   sem_init(&disk_mutex,0,1);
   // initialize semaphores
@@ -306,6 +325,9 @@ void start_swap_manager ()
 void end_swap_manager ()
 { int ret;
   // terminate the swap thread
+  sem_destroy(&swap_semaq);
+  sem_destroy(&swapq_mutex);
+  sem_destroy(&disk_mutex);
   ret = pthread_join(swap_thread,NULL);
   printf("swap thread has terminated %d\n", ret);
 }
