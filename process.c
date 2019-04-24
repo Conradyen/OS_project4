@@ -21,7 +21,7 @@ void context_in (int pid)
   CPU.Pid = pid;
   CPU.PC = PCB[pid]->PC;
   CPU.AC = PCB[pid]->AC;
-  //page table 
+  //page table
 	CPU.PTptr = PCB[pid]->PTptr;//ZXM
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
@@ -169,7 +169,7 @@ void init_PCB_ptrarry ()
 
 int new_PCB ()
 { int pid;
-
+  int i;
   pid = currentPid;
   currentPid++;
   if (pid >= maxProcess)

@@ -73,6 +73,7 @@ int load_process_to_swap (int pid, char *fname)
     offset = i % pageSize;
     //if (Debug) printf ("Process %d loading Line %d\n", pid, i);
     ret = load_instruction (buf,page,offset);
+    printf("pid %d page %d \n",pid,page);
     if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
     if (ret == progError) { PCB[pid]->exeStatus = eError; return;  	 } //???
   }
@@ -88,16 +89,15 @@ int load_process_to_swap (int pid, char *fname)
   return numpage;
 }
 
-int load_pages_to_memory (int pid, int numpage)
+void load_pages_to_memory (int pid, int numpage)
 {
   // call insert_swapQ to load the pages of process pid to memory
   // #pages to load = min (loadPpages, numpage = #pages loaded to swap for pid)
   // ask swap.c to place the process to ready queue only after the last write
-  mType *buf;//zxm
+  unsigned *buf;//zxm
   int i;
-  pringf("here in load_pages_to_memor\n");
+  printf("here in load_pages_to_memor\n");
 	for(i=0;i<numpage;i++) {
-    read_swap_page(pid,i,buf);
   	insert_swapQ (pid, i, buf, 0, 1);//code from swap to memory
 	}
 
@@ -105,10 +105,10 @@ int load_pages_to_memory (int pid, int numpage)
 
 int load_process (int pid, char *fname)
 { int ret;
-
+  init_process_pagetable (pid);
   ret = load_process_to_swap (pid, fname);   // return #pages loaded
   if (ret > 0)
-  { ret = load_pages_to_memory (pid, ret); }
+  { load_pages_to_memory (pid, ret); }
   return (ret);
 }
 
