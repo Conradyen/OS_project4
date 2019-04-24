@@ -327,11 +327,13 @@ void execute_process ()
 		printf("starting idle process: %d\n",pid);//zxm
     context_in (pid);
     CPU.exeStatus = eRun;
-    add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+    event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
     cpu_execution ();//zxm
     if (CPU.exeStatus == eReady) insert_ready_process (pid);
-    else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait)
+    else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait){
+      printf("here in pg fault\n");
       deactivate_timer (event);
+    }
     else // CPU.exeStatus == eError or eEnd
       { end_process (pid); deactivate_timer (event); }
     // ePFault and eWait has to be handled differently
