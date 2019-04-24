@@ -17,18 +17,6 @@
 
 // need to be consistent with dataSize in simos.h
 
-mType *Memory;   // The physical memory, size = pageSize*numPages
-
-typedef unsigned ageType;
-typedef struct
-{ int pid, page;   // the frame is allocated to process pid for page page
-  ageType age;
-  char free, dirty, pinned;   // in real systems, these are bits
-  int next, prev;
-} FrameStruct;
-
-FrameStruct *memFrame;   // memFrame[numPages]
-
 //========================= free list =======================
 /**
  * newly defined struct freeListNode
@@ -340,7 +328,8 @@ int findex, pid, page;
 // unless frames are from the terminated process (status = nullPage)
 // so, the process can continue using the page, till actual swap
 void addto_free_frame (int findex, int status)
-{ int i ;
+{ //add int pid
+  int i ;
  	mType *buf;
   if(status == dirtyFrame){
     //write to disk
@@ -408,18 +397,6 @@ int get_free_frame ()
    * Ming-Hsuan
    * @param freeFtail [description]
    */
-  if(freeFtail == freeFhead ){
-    //get lowest age frame
-    //get_lowest_age()?????????
-    for(i = freeFhead; i < freeFtail;i++){
-      //loop through memFrame check age of each frame get
-      //lowest age frame index
-    }
-  }else{
-    int idx = freeFhead;
-    freeFhead = memFrame[freeFhead].next;
-    return idx;
-  }
 //zxm begin----------------
  	if (freeFhead != nullIndex){
 		int head = freeFhead;

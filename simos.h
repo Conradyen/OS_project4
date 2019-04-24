@@ -53,6 +53,18 @@ typedef union     // type definition for memory (its content)
 #define mError -1
 #define mPFault 0
 
+mType *Memory;   // The physical memory, size = pageSize*numPages
+
+typedef unsigned ageType;
+typedef struct
+{ int pid, page;   // the frame is allocated to process pid for page page
+  ageType age;
+  char free, dirty, pinned;   // in real systems, these are bits
+  int next, prev;
+} FrameStruct;
+
+FrameStruct *memFrame;   // memFrame[numPages]
+
 // memory read/write function definitions
 
 int get_data (int offset);
@@ -165,6 +177,14 @@ void execute_process ();  // called by admin.c
 
 
 //=============== swap.c related definitions ====================
+// the following flags are used in swap.c, loader.c, paging.c
+#define Nothing 1   // flag values for finishact field (what to do after swap)
+#define freeBuf 2   // 1: do nothing, 2: swap.c should free the input buffer
+#define toReady 4   // 4: swap.c should sesnd the process to ready queue
+#define Both    6   // 6: both 2 and 4 (not used)
+#define actRead 0   // flags for act (action), read or write, with(out) signal
+#define actWrite 1
+
 
 void insert_swapQ (int pid, int page, unsigned *buf, int act, int pready);
 void dump_swapQ ();

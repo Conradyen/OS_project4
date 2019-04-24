@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <semaphore.h>
 #include "simos.h"
 
@@ -81,12 +84,16 @@ int write_swap_page (int pid, int page, unsigned *buf)
     ret = lseek (diskfd, location, SEEK_SET);
     if (ret < 0) perror ("Error lseek in write: \n");
     sem_wait(&disk_mutex);
-    printf("size buf %d page data size %d\n",sizeof(buf),pagedataSize);
-    retsize = write (diskfd, (char *)buf, pagedataSize);
+    printf("size buf %d page data size %d buf %d \n",sizeof(buf),pagedataSize,buf);
+    int i;
+    for(i = 0;i<4;i++){
+      printf("%d  ",buf[i]);
+    }printf("\n");
+    retsize = write (diskfd, (char *)buf,pagedataSize);
     sem_post(&disk_mutex);
-    if (retsize != pagedataSize)
-      { printf ("Error: Disk write returned incorrect size: %d\n", retsize);
-        exit(-1);
+    if (retsize == -1){
+      printf ("Error: Disk write returned incorrect size: %d\n", retsize);
+      exit(-1);
       }
     usleep (diskRWtime);
 }
@@ -136,7 +143,7 @@ void initialize_swap_space ()
   PswapSize = maxPpages*pageSize*dataSize;
   pagedataSize = pageSize*dataSize;
 
-  diskfd = open (swapFname, O_RDWR | O_CREAT, 0600);
+  diskfd = open (swapFname, O_RDWR | O_CREAT);
   if (diskfd < 0) { perror ("Error open: "); exit (-1); }
   ret = lseek (diskfd, swapspaceSize, SEEK_SET);
   if (ret < 0) { perror ("Error lseek in open: "); exit (-1); }
@@ -165,7 +172,7 @@ void initialize_swap_space ()
 //===================================================
 
 typedef struct SwapQnodeStruct
-{ int pid, page, act, pready;
+{ int pid, page, act, finishact;
   unsigned *buf;
   struct SwapQnodeStruct *next;
 } SwapQnode;
@@ -187,7 +194,7 @@ SwapQnode *swapQtail = NULL;
 
 void print_one_swapnode (SwapQnode *node)
 { printf ("pid,page=(%d,%d), act,ready=(%d, %d), buf=%x\n",
-           node->pid, node->page, node->act, node->pready, node->buf);
+           node->pid, node->page, node->act, node->finishact, node->buf);
 }
 
 void dump_swapQ ()
@@ -198,21 +205,20 @@ void dump_swapQ ()
    */
   // dump all the nodes in the swapQ
   SwapQnode *node = swapQhead;
-  sem_wait(&swapq_mutex);
+  //sem_wait(&swapq_mutex);
   printf ("******************** Swap Queue Dump **************************\n");
   while(node != NULL){
     print_one_swapnode(node);
     node = node->next;
   }
   printf("\n");
-  sem_wait(&swapq_mutex);
+  //sem_wait(&swapq_mutex);
 }
-
 // act can be actRead or actWrite
-// pready indicates whether to put the process to ready queue after swap
-// pready can be sendtoReady (back to ready queue) or notReady
-void insert_swapQ (pid, page, buf, act, pready)
-int pid, page, act, pready;
+// finishact indicates what to do after read/write swap disk is done, it can be:
+// toReady (send pid back to ready queue), freeBuf: free buf, Both, Nothing
+void insert_swapQ (pid, page, buf, act, finishact)
+int pid, page, act, finishact;
 unsigned *buf;
 {SwapQnode *node;
   /**
@@ -220,21 +226,21 @@ unsigned *buf;
    * @param SwapQnode [description]
    */
    if(Debug){
-     printf("Insert swap queue %d, %s\n",pid,buf);
+     printf("Insert swap queue %d\n",pid);
    }
   sem_post(&swap_semaq);
   node = (SwapQnode *) malloc(sizeof(SwapQnode));
   node->pid = pid;
   node->page = page;
   node->act = act;
-  node->pready = pready;
+  node->finishact = finishact;
   node->buf = buf;
   //buffer
   sem_wait(&swapq_mutex);
-  if(swapQtail != NULL){
+  if(swapQtail == NULL){
     swapQtail = node; swapQhead = node;
   }else{
-    swapQtail->next = node; swapQtail = node;
+    swapQtail->next = node; swapQtail = swapQtail->next;
   }
   sem_post(&swapq_mutex);
 }
@@ -261,25 +267,49 @@ void process_one_swap ()
     sem_wait(&swapq_mutex);
     node = swapQhead;
     printf(">>>>>>>>>>>>>>> handel one swap <<<<<<<<<<<<<<\n");
-    if(node->act = actRead){
+    if(node->act == actRead){
+      printf("insert to ready \n");
       read_swap_page (node->pid, node->page, node->buf);
-    }else if(node->act = actWrite){
+      //put into memery
+      int framenum = get_free_frame();
+      int base = framenum*pageSize;
+      int i;
+      for(i = 0;i< pageSize;i++){
+        printf("%d  ",node->buf[i]);
+        if(node->buf[i] > 10000000)
+          Memory[base+i].mInstr = node->buf[i];
+        else{
+          Memory[base+i].mData = node->buf[i];
+        }
+      }printf("\n");
+      //updata mem frame
+      update_newframe_info(framenum,node->pid,node->page);
+      //update page table
+      update_process_pagetable(node->pid,node->page,framenum);
+
+    }else if(node->act == actWrite){
       //if avtWrite write to swap.disk
       write_swap_page (node->pid, node->page, node->buf);
     }
-    if(node->pready = sendtoReady){
+    if(node->finishact == toReady){
       insert_ready_process(node->pid);
     }
+    else if(node->finishact == freeBuf){
+      free(node->buf);
+    }else if(node->finishact == Both){
+      insert_ready_process(node->pid);
+      //free(node->buf);
+    }
     if(Debug){
-      printf("Remove swap queue pid : %d, Page: %d",node->pid,node->page);
+      printf("Remove swap queue pid : %d, Page: %d\n",node->pid,node->page);
     }
     swapQhead = node->next;
     if(swapQhead == NULL){
       swapQtail = NULL;
     }
-    free(node);
+    //free(node);
     sem_post(&swapq_mutex);
-    sem_wait(&swap_semaq);
+    //sem_wait(&swap_semaq);
     if(Debug) {
       dump_swapQ ();
     }

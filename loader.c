@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include "simos.h"
 
 // need to be consistent with paging.c: mType and constant definitions
@@ -15,8 +16,11 @@ FILE *progFd;
 //==========================================
 
 // may return progNormal or progError (if the program is incorrect)
-int load_instruction (mType *buf, int page, int offset)
+int load_instruction (unsigned *buf,int page, int offset)
 {
+  /**
+   * used to be load_instruction (mType *buf, int page, int offset)
+   */
   // load instruction to buffer
   int opcode,operand;
   int addr = (page * pageSize)+offset;
@@ -24,25 +28,28 @@ int load_instruction (mType *buf, int page, int offset)
   if (Debug) printf ("load instruction: %d, %d\n",opcode, operand);//zxm
   opcode = opcode << opcodeShift;
   operand = operand & operandMask;
-  buf[addr].mInstr = opcode | operand;
+  printf("addr %d, instr %d\n",addr,opcode | operand);
+  buf[offset] = opcode | operand;
   return (progNormal);//zxm mNormal); how to generate progError
 }
 
-int load_data (mType *buf, int page, int offset)
+int load_data (unsigned *buf,int page, int offset)
 {
+  // used to be load_data (mType *buf, int page, int offset)
   // load data to buffer (same as load instruction, but use the mData field
   int data;
   int addr = (page * pageSize)+offset;
   fscanf (progFd, "%d\n", &data);
   if (Debug) printf ("load data: %d\n", data);//zxm
-  buf[addr].mData = data;
+  buf[offset] = data;
   return (progNormal);//zxm mNormal); how to generate progError
 }
 
 // load program to swap space, returns the #pages loaded
 int load_process_to_swap (int pid, char *fname)
 {
-  mType *buf;
+  //mType *buf;
+  unsigned load_buf[pageSize];
   int msize, numinstr, numdata;
 	int page,offset,numpage;//zxm
   int ret,i;//check return value
@@ -68,23 +75,32 @@ int load_process_to_swap (int pid, char *fname)
   // and it is on disk
   //=====================================================================
   //TOBE changed
+  int j;
   for (i=0; i<numinstr; i++)
   {	page = i / pageSize;
     offset = i % pageSize;
     //if (Debug) printf ("Process %d loading Line %d\n", pid, i);
-    ret = load_instruction (buf,page,offset);
-    printf("pid %d page %d \n",pid,page);
-    if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
+    ret = load_instruction (load_buf,page,offset);
+    printf("i %d\n",i);
+    printf(">> loader >>>>> pid %d page %d\n",pid,page);
+    if (ret == progNormal && offset == (pageSize-1) ) {
+      write_swap_page(pid,page,load_buf);
+      memset(load_buf,0,pageSize*sizeof(int));
+    }//zxm
     if (ret == progError) { PCB[pid]->exeStatus = eError; return;  	 } //???
   }
   for (i = numinstr; i < msize; i++)
   { page = i / pageSize;
     offset = i % pageSize;
     //if (Debug) printf ("Process %d loading Line %d\n", pid, i);
-    ret = load_data (buf, page, offset);
-    if (ret == progNormal) write_swap_page(pid,page,buf);//zxm
+    ret = load_data ( load_buf,page, offset);
+    if (ret == progNormal && offset == (pageSize-1)){
+       write_swap_page(pid,page,load_buf);//zxm
+       memset(load_buf,0,pageSize*sizeof(int));
+     }
     if (ret == progError) { PCB[pid]->exeStatus = eError; return; } //???
   }
+  write_swap_page(pid,page,load_buf);//last page
   //=====================================================================
   return numpage;
 }
@@ -94,12 +110,24 @@ void load_pages_to_memory (int pid, int numpage)
   // call insert_swapQ to load the pages of process pid to memory
   // #pages to load = min (loadPpages, numpage = #pages loaded to swap for pid)
   // ask swap.c to place the process to ready queue only after the last write
-  unsigned *buf;//zxm
-  int i;
+  unsigned buf[pageSize];//zxm
+  int i,j,framenum;
   printf("here in load_pages_to_memor\n");
-	for(i=0;i<numpage;i++) {
-  	insert_swapQ (pid, i, buf, 0, 1);//code from swap to memory
-	}
+  int num_load;
+  num_load = loadPpages;
+  if(numpage < num_load){
+    num_load = numpage;
+  }
+
+	for(i=0;i<num_load;i++) {
+
+  	insert_swapQ (pid, i, buf, actRead, toReady);//code from swap to memory
+
+  }
+  //insert to memery
+  //framenum = get_free_frame ()
+
+  //wait for swap space return
 
 }
 
@@ -108,7 +136,7 @@ int load_process (int pid, char *fname)
   init_process_pagetable (pid);
   ret = load_process_to_swap (pid, fname);   // return #pages loaded
   if (ret > 0)
-  { load_pages_to_memory (pid, ret); }
+  { load_pages_to_memory (pid, loadPpages); }//load loadPpages
   return (ret);
 }
 
