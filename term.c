@@ -107,7 +107,7 @@ void handle_one_termio ()
     termQhead = node->next;
     if (termQhead == NULL) termQtail = NULL;
     //free (node->str);
-    free (node);
+    //free (node);
     sem_post(&term_mutex);
     sem_wait(&term_semaq);
     if (Debug) dump_termio_queue ();
