@@ -671,12 +671,14 @@ void memory_agescan ()
    * @param i [description]
    */
   for(i = OSpages;i < numPages;i++){
-    memFrame[i].age = memFrame[i].age >> 1;
-    if(memFrame[i].age == 0x0000000){
-      /**
-       * add to free list when age is 0x0000000
-       */
-      addto_free_frame(i,memFrame[i].dirty);
+    if(memFrame[i].age != 0x0000000){//assume zeroAge is already in free list 
+      memFrame[i].age = memFrame[i].age >> 1;
+      if(memFrame[i].age == 0x0000000){
+        /**
+         * add to free list when age is 0x0000000
+         */
+        addto_free_frame(i,memFrame[i].dirty);
+      }
     }
   }
 }

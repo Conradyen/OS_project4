@@ -64,9 +64,13 @@ void handle_interrupt ()
      * Ming-Hsuan
      * @param pFaultException [description]
      */
+     if ((CPU.interruptV & ageInterrupt) == ageInterrupt)
+       memory_agescan ();
+       clear_interrupt (ageInterrupt);
     if((CPU.interruptV & pFaultException) == pFaultException){
       //page fault handling
       page_fault_handler();
+      clear_interrupt (pFaultException);
     }
     if (Debug){
     printf ("Interrup handler: pid = %d; interrupt = %x; exeStatus = %d\n",
@@ -179,7 +183,7 @@ void cpu_execution ()
     }
 
     if (CPU.interruptV != 0) handle_interrupt ();
-		memory_agescan ();//zxm
+		//memory_agescan ();//zxm
     advance_clock ();
       // since we don't have clock, we use instruction cycle as the clock
       // no matter whether there is a page fault or an error,
