@@ -61,7 +61,7 @@ ReadyNode *readyTail = NULL;
 void insert_ready_process (pid)
 int pid;
 { ReadyNode *node;
-
+  printf("insert ready process!!!\n");
   node = (ReadyNode *) malloc (sizeof (ReadyNode));
   node->pid = pid;
   node->next = NULL;
@@ -183,7 +183,7 @@ int new_PCB ()
 
 void free_PCB (int pid)
 {
-  free (PCB[pid]);
+  //free (PCB[pid]);
   if (Debug) printf ("Free PCB: %d\n", PCB[pid]);
   PCB[pid] = NULL;
 }
@@ -329,9 +329,14 @@ void execute_process ()
     CPU.exeStatus = eRun;
     event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
     cpu_execution ();//zxm
-    if (CPU.exeStatus == eReady) insert_ready_process (pid);
+    if (CPU.exeStatus == eReady){//insert_ready_process (pid);
+      context_out (pid);
+      printf("executes process\n");
+      insert_ready_process (pid);
+    }
     else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait){
       printf("here in pg fault\n");
+      context_out (pid);
       deactivate_timer (event);
     }
     else // CPU.exeStatus == eError or eEnd
@@ -354,7 +359,7 @@ void execute_process ()
   { printf("starting idle process\n");
     context_in (idlePid);
     CPU.exeStatus = eRun;
-    add_timer (idleQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+    event = add_timer (idleQuantum, idlePid, actTQinterrupt, oneTimeTimer);
     cpu_execution ();
   }
 }

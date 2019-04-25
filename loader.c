@@ -119,11 +119,12 @@ void load_pages_to_memory (int pid, int numpage)
     num_load = numpage;
   }
 
-	for(i=0;i<num_load;i++) {
+	for(i=0;i<num_load-1;i++) {
 
-  	insert_swapQ (pid, i, buf, actRead, toReady);//code from swap to memory
+  	insert_swapQ (pid, i, buf, actRead, Nothing);//code from swap to memory
 
   }
+  insert_swapQ (pid, num_load-1, buf, actRead, toReady);
   //insert to memery
   //framenum = get_free_frame ()
 

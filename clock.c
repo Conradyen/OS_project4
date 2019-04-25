@@ -19,12 +19,12 @@ void advance_clock ()
 }
 
 // We need to build a timer list, in sorted order
-// only the first event in the list will be checked to see 
+// only the first event in the list will be checked to see
 // whether its time is up
 // To make insertion efficient, we keep a binary tree of events
-// while using a eventHead pointer to point to the leftmost node 
+// while using a eventHead pointer to point to the leftmost node
 //
-// eventNode is defined to keep track of timer events and 
+// eventNode is defined to keep track of timer events and
 // to maintain the event tree (and list)
 // The fields: time, pid, act, recurP belong to the timer event level
 // The fields: left, right, parent belong to the tree data structure level
@@ -34,7 +34,7 @@ struct eventNode
   int pid;    // if action = actReady, put pid in  ready queue
               // for other actions pid is ignored (can be set to 0)
   int act;    // action to be performed when timer expires
-  int recurP; // if it is not a recurring timer, then this is 0; 
+  int recurP; // if it is not a recurring timer, then this is 0;
               // else this is the recurring period
   struct eventNode *left, *right;
   struct eventNode *parent;
@@ -44,7 +44,7 @@ struct eventNode
 
 // the event tree has a dummy node to begin with, with the highest time
 void initialize_eventtree ()
-{ 
+{
   eventTree = (struct eventNode *) malloc (sizeof (struct eventNode));
   eventTree->time = maxCPUcycles + 1;
   eventTree->pid = 0;
@@ -52,7 +52,7 @@ void initialize_eventtree ()
   eventTree->recurP = 0;
   eventTree->left = NULL;
   eventTree->right = NULL;
-  eventTree->parent = NULL; 
+  eventTree->parent = NULL;
   eventHead = eventTree;
 }
 
@@ -62,10 +62,10 @@ struct eventNode *event;
 
   event->left = NULL;
   event->right = NULL;
-  
+
   cnode = eventTree;
   while (cnode != NULL)
-  { if (event->time < cnode->time) 
+  { if (event->time < cnode->time)
       if (cnode->left == NULL)
       { cnode->left = event;
         event->parent = cnode;
@@ -87,7 +87,7 @@ struct eventNode *event;
 
 // only remove the eventHead, which is always leftmost node in the tree
 // first update the eventHead, then update the tree
-// note: freeing the node is not done here, recurring event reuses node 
+// note: freeing the node is not done here, recurring event reuses node
 
 void remove_eventhead ()
 { struct eventNode *event, *temp;
@@ -133,7 +133,7 @@ void dump_events ()
 //
 
 void initialize_timer ()
-{ 
+{
   initialize_eventtree();
 }
 
@@ -145,7 +145,7 @@ int time, pid, action, recurperiod; // time is from current time
     // caller gives the relative time, so need to change to absolute time
   if (time > maxCPUcycles)
   { printf ("timer exceeds CPU cycle limit!!!\n"); exit(-1); }
-  else 
+  else
   { event = malloc (sizeof (struct eventNode));
     event->time = time;
     event->pid = pid;
@@ -196,7 +196,7 @@ void check_timer ()
       { printf ("timer exceeds CPU cycle limit!!!\n"); exit(-1); }
       else insert_event (event);
     }
-    else free (event);
+    else //free (event); causing some problem
     if (clockDebug) { printf (" %x\n", CPU.interruptV); dump_events (); }
   }
 }
@@ -212,10 +212,8 @@ genericPtr castedevent;
 
   event = (struct eventNode *) castedevent;
   event->act = actNull;
-  if (clockDebug) 
+  if (clockDebug)
     printf("Deactivate event: addr=%x, time=%d, pid=%d, action=%d, reP=%d\n",
           castedevent, event->time, event->pid, event->act, event->recurP);
   if (clockDebug) dump_events ();
 }
-
-

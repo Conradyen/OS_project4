@@ -112,11 +112,11 @@ void print_one_frameinfo (int indx);
  int get_offset(int addr);//return off set
 
 int get_pagenum(int addr){
-  return (addr >> pagenumShift);
+  return (addr / pageSize);
 }
 
 int get_offset(int addr){
-  return (addr & pageoffsetMask);
+  return (addr % pageSize);
 }
 
 //========================================================
@@ -138,12 +138,12 @@ int calculate_memory_address (unsigned offset, int rwflag)
     framenum = CPU.PTptr[pagenum];
 		//memFrame[framenum].age >> 1;//zxm
 		if(flagWrite == rwflag)	memFrame[framenum].dirty = dirtyFrame;//zxm
-		printf("pagenum=%d,framenum=%d\n",pagenum,framenum);
-	  return ((framenum << pagenumShift) | get_offset(offset));//pagenum
+		printf("pagenum = %d,framenum = %d\n",pagenum,framenum);
+	  return (framenum*pageSize + get_offset(offset));//pagenum
   }
   // TODO mError
   else if(pagenum >= maxPpages){
-    printf(">>>>>>>>>>>>>>> segmentation fault  <<<<<<<<<<<<<<<<<<<");
+    printf(">>>>>>>>>>>>>>> segmentation fault  <<<<<<<<<<<<<<<<<<<\n");
     return mError;
   }
   else{//page fault
@@ -214,7 +214,7 @@ int get_instruction (int offset)
   // convert memory content to opcode and operand
   // return mNormal, mPFault or mError
   maddr = calculate_memory_address(offset,flagRead);
-	printf("get instr, maddr = %d",maddr);
+	printf("get instr, maddr = %d\n",maddr);
   //page fault
   if(maddr == mPFault){
     return mPFault;
@@ -225,9 +225,9 @@ int get_instruction (int offset)
   }
   else{
     instr = Memory[maddr].mInstr;
-		printf("instr = %d, CPU.IRopcode= %d, CPU.IRoperand = %d\n",instr,CPU.IRopcode,CPU.IRoperand);
     CPU.IRopcode = instr >> opcodeShift;
     CPU.IRoperand = instr & operandMask;
+    printf("instr = %d, CPU.IRopcode= %d, CPU.IRoperand = %d\n",instr,CPU.IRopcode,CPU.IRoperand);
     return mNormal;
   }
 }
@@ -674,7 +674,7 @@ void memory_agescan ()
    * @param i [description]
    */
   for(i = OSpages;i < numPages;i++){
-    if(memFrame[i].age != 0x0000000){//assume zeroAge is already in free list 
+    if(memFrame[i].age != 0x0000000){//assume zeroAge is already in free list
       memFrame[i].age = memFrame[i].age >> 1;
       if(memFrame[i].age == 0x0000000){
         /**

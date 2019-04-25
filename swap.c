@@ -55,7 +55,7 @@ int read_swap_page (int pid, int page, unsigned *buf)
     ret = lseek (diskfd, location, SEEK_SET);
     if (ret < 0) perror ("Error lseek in read: \n");
     sem_wait(&disk_mutex);
-    printf("READ size buf %d page data size %d\n",sizeof(buf),pagedataSize);
+    //printf("READ size buf %d page data size %d\n",sizeof(buf),pagedataSize);
     retsize = read (diskfd, (char *)buf, pagedataSize);
     sem_post(&disk_mutex);
     if (retsize != pagedataSize)
@@ -84,11 +84,11 @@ int write_swap_page (int pid, int page, unsigned *buf)
     ret = lseek (diskfd, location, SEEK_SET);
     if (ret < 0) perror ("Error lseek in write: \n");
     sem_wait(&disk_mutex);
-    printf("size buf %d page data size %d buf %d \n",sizeof(buf),pagedataSize,buf);
-    int i;
-    for(i = 0;i<4;i++){
-      printf("%d  ",buf[i]);
-    }printf("\n");
+    //printf("size buf %d page data size %d buf %d \n",sizeof(buf),pagedataSize,buf);
+    // int i;
+    // for(i = 0;i<4;i++){
+    //   printf("%d  ",buf[i]);
+    // }printf("\n");
     retsize = write (diskfd, (char *)buf,pagedataSize);
     sem_post(&disk_mutex);
     if (retsize == -1){
@@ -295,7 +295,7 @@ void process_one_swap ()
       insert_ready_process(node->pid);
     }
     else if(node->finishact == freeBuf){
-      free(node->buf);
+      //free(node->buf);
     }else if(node->finishact == Both){
       insert_ready_process(node->pid);
       //free(node->buf);
