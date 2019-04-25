@@ -334,7 +334,7 @@ void addto_free_frame (int findex, int status)
   if(status == dirtyFrame){
     //write to disk
 	for(i = 0;i< pageSize;i++){
-     if(Memory[findex+i] > 10000000)
+     if(Memory[findex+i].mData > 10000000)
       buf[i] = Memory[findex+i].mInstr;
      else
       buf[i] = Memory[findex+i].mData;
@@ -650,7 +650,7 @@ int page_fault_handler ()
     else
       Memory[swapframe+i].mData = buf[i];
   }
-	pdate_process_pagetable (CPU.Pid, swappage, swapframe); //zxm
+	update_process_pagetable (CPU.Pid, swappage, swapframe); //zxm
   }printf("\n");
 
   // update page table
