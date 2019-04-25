@@ -138,7 +138,8 @@ int calculate_memory_address (unsigned offset, int rwflag)
     framenum = CPU.PTptr[pagenum];
 		//memFrame[framenum].age >> 1;//zxm
 		if(flagWrite == rwflag)	memFrame[framenum].dirty = dirtyFrame;//zxm
-	  return ((pagenum << pagenumShift) | get_offset(offset));
+		printf("pagenum=%d,framenum=%d\n",pagenum,framenum);
+	  return ((framenum << pagenumShift) | get_offset(offset));//pagenum
   }
   // TODO mError
   else if(pagenum >= maxPpages){
@@ -213,6 +214,7 @@ int get_instruction (int offset)
   // convert memory content to opcode and operand
   // return mNormal, mPFault or mError
   maddr = calculate_memory_address(offset,flagRead);
+	printf("get instr, maddr = %d",maddr);
   //page fault
   if(maddr == mPFault){
     return mPFault;
@@ -223,6 +225,7 @@ int get_instruction (int offset)
   }
   else{
     instr = Memory[maddr].mInstr;
+		printf("instr = %d, CPU.IRopcode= %d, CPU.IRoperand = %d\n",instr,CPU.IRopcode,CPU.IRoperand);
     CPU.IRopcode = instr >> opcodeShift;
     CPU.IRoperand = instr & operandMask;
     return mNormal;
