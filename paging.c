@@ -330,14 +330,16 @@ int findex, pid, page;
 void addto_free_frame (int findex, int status)
 { //add int pid
   int i ;
- 	mType *buf;
+ 	unsigned buf[pageSize];
   if(status == dirtyFrame){
     //write to disk
-		for(i=0;i<pageSize;i++) {
-			buf[i].mInstr = Memory[findex+i].mInstr;
-			buf[i].mData = Memory[findex+i].mData;
-		}
-    //insert_swapQ (pid, page, buf, actWrite, pready)//zxm how do i know which pid it belong?
+	for(i = 0;i< pageSize;i++){
+     if(Memory[findex+i] > 10000000)
+      buf[i] = Memory[findex+i].mInstr;
+     else
+      buf[i] = Memory[findex+i].mData;
+	}
+    insert_swapQ (CPU.Pid, memFrame[findex].page, buf, actWrite, Nothing);//zxm how do i know which pid it belong?
 		if(freeFhead == nullIndex && freeFtail== nullIndex) { //??????
 			freeFhead = findex; freeFtail = findex;
 		} else {
@@ -623,16 +625,33 @@ int page_fault_handler ()
    */
   int swappid, swappage, dirty;
   int *inbuf, *outbuf;
+	unsigned buf[pageSize];
+	int swapframe;
+  int i;
   // handle page fault
   // obtain a free frame or get a frame with the lowest age
   // if the frame is dirty, insert a write request to swapQ
   // insert a read request to swapQ to bring the new page to this frame
   // update the frame metadata, the page tables of the processes
-  swappid = -1;
+  //swappid = -1;
+  //if (&swappid < 0) return (mError);
   //get free frame always returns a frame
-  swappage = get_free_frame();
-
-  if (&swappid < 0) return (mError);
+  swapframe= get_free_frame();
+  if (swapframe < 0) return (mError);
+	for(i = 0;i < maxPpages;i++){
+		if(PCB[CPU.Pid]->PTptr[i] == diskPage ){
+			swappage = i;
+			break;
+		}
+	insert_swapQ (CPU.Pid, swappage, buf, actRead, Nothing);//zxm
+  for(i = 0;i< pageSize;i++){
+    if(buf[i] > 10000000)
+      Memory[swapframe+i].mInstr = buf[i];
+    else
+      Memory[swapframe+i].mData = buf[i];
+  }
+	pdate_process_pagetable (CPU.Pid, swappage, swapframe); //zxm
+  }printf("\n");
 
   // update page table
   //=============================================

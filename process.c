@@ -324,7 +324,7 @@ void execute_process ()
   if (pid != nullReady)
   {
     // *** ADD CODE to perform context switch and call cpu_execution
-		printf("starting idle process: %d\n",pid);//zxm
+		printf("starting process: %d\n",pid);//zxm
     context_in (pid);
     CPU.exeStatus = eRun;
     event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
