@@ -83,7 +83,7 @@ int get_ready_process ()
   { pid = readyHead->pid;
     rnode = readyHead;
     readyHead = rnode->next;
-    free (rnode);
+    //free(rnode);
     if (readyHead == NULL) readyTail = NULL;
   }
   return (pid);
@@ -183,7 +183,7 @@ int new_PCB ()
 
 void free_PCB (int pid)
 {
-  //free (PCB[pid]);
+  free (PCB[pid]);
   if (Debug) printf ("Free PCB: %d\n", PCB[pid]);
   PCB[pid] = NULL;
 }
@@ -358,8 +358,9 @@ void execute_process ()
        // only time quantum will stop idle process, and shoud use idleQuantum
   { printf("starting idle process\n");
     context_in (idlePid);
+    //load_idle_process ();
     CPU.exeStatus = eRun;
-    event = add_timer (idleQuantum, idlePid, actTQinterrupt, oneTimeTimer);
+    add_timer (idleQuantum, idlePid, actTQinterrupt, oneTimeTimer);
     cpu_execution ();
   }
 }

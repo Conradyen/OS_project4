@@ -76,6 +76,7 @@ int get_instruction (int offset);
 void initialize_memory_manager ();  // called by system.c
 void dump_process_memory (int pid);
 void dump_memory ();
+void dump_one_frame (int findex);
 
 // memory management functions
 
@@ -182,6 +183,7 @@ void execute_process ();  // called by admin.c
 #define freeBuf 2   // 1: do nothing, 2: swap.c should free the input buffer
 #define toReady 4   // 4: swap.c should sesnd the process to ready queue
 #define Both    6   // 6: both 2 and 4 (not used)
+#define toWait 10
 #define actRead 0   // flags for act (action), read or write, with(out) signal
 #define actWrite 1
 

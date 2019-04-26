@@ -136,6 +136,10 @@ int load_process (int pid, char *fname)
 { int ret;
   init_process_pagetable (pid);
   ret = load_process_to_swap (pid, fname);   // return #pages loaded
+  int i;
+  for(i = 0;i<ret;i++){
+    PCB[pid]->PTptr[i] = diskPage;
+  }
   if (ret > 0)
   { load_pages_to_memory (pid, loadPpages); }//load loadPpages
   return (ret);

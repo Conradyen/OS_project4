@@ -294,8 +294,10 @@ void process_one_swap ()
     if(node->finishact == toReady){
       insert_ready_process(node->pid);
     }
-    else if(node->finishact == freeBuf){
+    else if(node->finishact == toWait){
       //free(node->buf);
+      insert_endWait_process(node->pid);
+      set_interrupt (endWaitInterrupt);
     }else if(node->finishact == Both){
       insert_ready_process(node->pid);
       //free(node->buf);

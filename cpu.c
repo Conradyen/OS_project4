@@ -64,9 +64,10 @@ void handle_interrupt ()
      * Ming-Hsuan
      * @param pFaultException [description]
      */
-     if ((CPU.interruptV & ageInterrupt) == ageInterrupt)
+     if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
        memory_agescan ();
        clear_interrupt (ageInterrupt);
+     }
     if((CPU.interruptV & pFaultException) == pFaultException){
       //page fault handling
       page_fault_handler();

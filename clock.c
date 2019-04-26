@@ -196,7 +196,7 @@ void check_timer ()
       { printf ("timer exceeds CPU cycle limit!!!\n"); exit(-1); }
       else insert_event (event);
     }
-    else //free (event); causing some problem
+    else //free (event); //causing some problem
     if (clockDebug) { printf (" %x\n", CPU.interruptV); dump_events (); }
   }
 }

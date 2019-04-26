@@ -134,9 +134,18 @@ int calculate_memory_address (unsigned offset, int rwflag)
   // returns memory address or mPFault or mError
   int pagenum = get_pagenum(offset);
   int framenum;
+  printf("pagenum %d \n",pagenum);
   if(pagenum < maxPpages){
     framenum = CPU.PTptr[pagenum];
+    if(Debug){
+      dump_one_frame(framenum);
+    }
 		//memFrame[framenum].age >> 1;//zxm
+    if(framenum == diskPage){
+      printf("here in paging set pagefault\n");
+      set_interrupt (pFaultException);//zxm
+      return mPFault;
+    }
 		if(flagWrite == rwflag)	memFrame[framenum].dirty = dirtyFrame;//zxm
 		printf("pagenum = %d,framenum = %d\n",pagenum,framenum);
 	  return (framenum*pageSize + get_offset(offset));//pagenum
@@ -146,11 +155,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
     printf(">>>>>>>>>>>>>>> segmentation fault  <<<<<<<<<<<<<<<<<<<\n");
     return mError;
   }
-  else{//page fault
-    //set page fault interrupt
-		set_interrupt (pFaultException);//zxm
-    return mPFault;
-  }
+
 }
 
 int get_data (int offset)
@@ -235,12 +240,13 @@ int get_instruction (int offset)
 // these two direct_put functions are only called for loading idle process
 // no specific protection check is done
 void direct_put_instruction (int findex, int offset, int instr)
-{ int addr = (offset & pageoffsetMask) | (findex << pagenumShift);
+{ int addr = findex*pageSize+offset;//(offset & pageoffsetMask) | (findex << pagenumShift);
+  printf("direct put instr %d\n",addr);
   Memory[addr].mInstr = instr;
 }
 
 void direct_put_data (int findex, int offset, mdType data)
-{ int addr = (offset & pageoffsetMask) | (findex << pagenumShift);
+{ int addr = findex*pageSize+offset;//(offset & pageoffsetMask) | (findex << pagenumShift);
   Memory[addr].mData = data;
 }
 
@@ -253,7 +259,8 @@ void dump_one_frame (int findex)
   // dump the content of the memory (of frame findex)
   for(i = 0;i<pageSize;i++){
     int addr = findex*pageSize + i;
-    printf("Memory frame index %d Data %.2f instruction %d ",findex,Memory[addr].mData,Memory[addr].mInstr);
+    print_one_frameinfo(findex);
+    printf("Memory frame index %d Data %.2f instruction %d \n",findex,Memory[addr].mData,Memory[addr].mInstr);
   }
 }
 
@@ -265,7 +272,7 @@ void dump_memory ()
    */
   // dump all frames of the entire memory
   printf("*************** dump memory comtent ***************");
-  for(i = 0;i < pageSize*numPages;i++){
+  for(i = 0;i < numPages;i++){
     dump_one_frame(i);
   }
 }
@@ -320,7 +327,6 @@ int findex, pid, page;
   memFrame[findex].page = page;
   memFrame[findex].pid = pid;
  	memFrame[findex].free = usedFrame;
-  //where is the new frame ??????????????
 	memFrame[findex].next = nullIndex;
 	memFrame[findex].prev = nullIndex;
 }
@@ -337,10 +343,10 @@ void addto_free_frame (int findex, int status)
   if(status == dirtyFrame){
     //write to disk
 	for(i = 0;i< pageSize;i++){
-     if(Memory[findex+i].mData > 10000000)
-      buf[i] = Memory[findex+i].mInstr;
+     if(Memory[findex*pageSize+i].mData > 10000000)
+      buf[i] = Memory[findex*pageSize+i].mInstr;
      else
-      buf[i] = Memory[findex+i].mData;
+      buf[i] = Memory[findex*pageSize+i].mData;
 	}
     insert_swapQ (CPU.Pid, memFrame[findex].page, buf, actWrite, Nothing);//zxm how do i know which pid it belong?
 		if(freeFhead == nullIndex && freeFtail== nullIndex) { //??????
@@ -568,11 +574,14 @@ int free_process_memory(int pid)
 	for(i =0; i < maxPpages; i++)
 	{
 		framenum = PCB[pid]->PTptr[i];
-		memFrame[framenum].age = zeroAge;
-  	memFrame[framenum].dirty = cleanFrame;
-  	memFrame[framenum].free = freeFrame;
-  	memFrame[framenum].pinned = nopinFrame;
-  	memFrame[framenum].pid = nullPid;
+    //printf("freme number ---> %d",framenum);
+    if(framenum > 0 && framenum < numPages){
+  		memFrame[framenum].age = zeroAge;
+    	memFrame[framenum].dirty = cleanFrame;
+    	memFrame[framenum].free = freeFrame;
+    	memFrame[framenum].pinned = nopinFrame;
+    	memFrame[framenum].pid = nullPid;
+    }
 	}
   return mNormal;
 }
@@ -594,6 +603,15 @@ void dump_process_pagetable (int pid)
 void dump_process_memory (int pid)
 {
   // print out the memory content for process pid
+  int i,j;
+  int framenum;
+  for(i = 0;i < maxPpages;i++){
+    framenum = PCB[pid]->PTptr[i];
+    if(framenum>0 && framenum < numPages){
+        dump_one_frame (framenum);
+      }
+    }
+  
 }
 
 //==========================================
@@ -616,10 +634,6 @@ void dump_process_memory (int pid)
 #define actRead 0
 #define actWrite 1
 
-//
-// void select_aged_page(){
-//
-// }
 
 int page_fault_handler ()
 {
@@ -639,6 +653,7 @@ int page_fault_handler ()
   //swappid = -1;
   //if (&swappid < 0) return (mError);
   //get free frame always returns a frame
+  printf("here in page fault handler\n");
   swapframe= get_free_frame();
   if (swapframe < 0) return (mError);
 	for(i = 0;i < maxPpages;i++){
@@ -646,24 +661,17 @@ int page_fault_handler ()
 			swappage = i;
 			break;
 		}
-	insert_swapQ (CPU.Pid, swappage, buf, actRead, Nothing);//zxm
+  }
+	insert_swapQ (CPU.Pid, swappage, buf, actRead, toWait);//zxm
   for(i = 0;i< pageSize;i++){
     if(buf[i] > 10000000)
-      Memory[swapframe+i].mInstr = buf[i];
+      Memory[swapframe*pageSize+i].mInstr = buf[i];
     else
-      Memory[swapframe+i].mData = buf[i];
+      Memory[swapframe*pageSize+i].mData = buf[i];
   }
 	update_process_pagetable (CPU.Pid, swappage, swapframe); //zxm
-  }printf("\n");
+  printf("\n");
 
-  // update page table
-  //=============================================
-  //TO BE changed
-  //inbuf = get_memoryPtr (pid, page);
-  //outbuf = get_memoryPtr (swappid, swappage);
-  // if (!dirty)  // no need to write back
-  //   { swappid = -1; swappage = -1; }
-  // insert_swapQ (pid, page, inbuf, swappid, swappage, outbuf);
 }
 
 // scan the memory and update the age field of each frame
