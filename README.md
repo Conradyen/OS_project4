@@ -6,9 +6,9 @@ pages other than first two pages is being read into memory when needed. Page rep
 
 ## To compile
 
-'''
+```
 >> make all
-'''
+```
 
 
 
